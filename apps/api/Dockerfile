@@ -18,6 +18,5 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/node_modules ./node_modules
 COPY --from=builder /app/apps/api/package.json ./
 COPY --from=builder /app/bairros_tupariceta.geojson ./
-COPY apps/web/dist ./dist/public
 EXPOSE 3001
 CMD ["node", "dist/server.js"]
