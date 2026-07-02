@@ -270,9 +270,10 @@ export function MainLayout() {
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 4, flexShrink: 0 }}>
             ☰
           </button>
-          <span style={{ fontSize: 13, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 13, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
             Sistema Multifinalitário de Gestão Territorial Urbana
           </span>
+          <div id="map-search-slot" style={{ flex: 1, minWidth: 0, display: 'flex' }} />
           <NotificationBell />
         </header>
 

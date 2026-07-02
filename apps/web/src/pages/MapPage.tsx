@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import jsPDF from 'jspdf'
@@ -24,42 +25,11 @@ export function MapPage() {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const isMobile = useIsMobile()
 
-  const searchBarRef = useRef<HTMLDivElement>(null)
-  const searchPosRef = useRef<{ x: number; y: number } | null>(null)
-  const [searchPos, setSearchPos] = useState<{ x: number; y: number } | null>(() => {
-    try {
-      const saved = localStorage.getItem('sigweb_search_pos')
-      return saved ? JSON.parse(saved) : null
-    } catch {
-      return null
-    }
-  })
-
-  function handleSearchDragStart(e: React.PointerEvent) {
-    if (!searchBarRef.current) return
-    e.preventDefault()
-    const rect = searchBarRef.current.getBoundingClientRect()
-    const offsetX = e.clientX - rect.left
-    const offsetY = e.clientY - rect.top
-
-    function onMove(ev: PointerEvent) {
-      const pos = {
-        x: Math.min(Math.max(ev.clientX - offsetX, 0), window.innerWidth - 60),
-        y: Math.min(Math.max(ev.clientY - offsetY, 0), window.innerHeight - 60),
-      }
-      searchPosRef.current = pos
-      setSearchPos(pos)
-    }
-    function onUp() {
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup', onUp)
-      if (searchPosRef.current) {
-        localStorage.setItem('sigweb_search_pos', JSON.stringify(searchPosRef.current))
-      }
-    }
-    document.addEventListener('pointermove', onMove)
-    document.addEventListener('pointerup', onUp)
-  }
+  // Barra de busca é renderizada via portal no cabeçalho (ao lado do nome do sistema)
+  const [searchSlot, setSearchSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setSearchSlot(document.getElementById('map-search-slot'))
+  }, [])
 
   const { data: parcelaDetail } = useQuery({
     queryKey: ['parcela', selectedParcelaId],
@@ -390,91 +360,73 @@ export function MapPage() {
         })}
       </div>
 
-      {/* Barra de busca */}
-      <div
-        ref={searchBarRef}
-        style={{
-          position: 'absolute', zIndex: 1001, width: isMobile ? 'calc(100vw - 80px)' : 360,
-          ...(searchPos
-            ? { left: searchPos.x, top: searchPos.y }
-            : { top: 12, left: '50%', transform: 'translateX(-50%)' }),
-        }}
-      >
-        <div style={{ position: 'relative' }}>
-          <span
-            onPointerDown={handleSearchDragStart}
-            title="Mover"
-            style={{
-              position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
-              cursor: 'grab', color: '#9ca3af', fontSize: 14, lineHeight: 1,
-              touchAction: 'none', userSelect: 'none',
-            }}
-          >
-            ⠿
-          </span>
+      {/* Barra de busca — renderizada no cabeçalho, ao lado do nome do sistema */}
+      {searchSlot && createPortal(
+        <div style={{ position: 'relative', width: isMobile ? '100%' : 320, maxWidth: 360 }}>
           <input
             value={searchQuery}
             onChange={e => handleSearch(e.target.value)}
             placeholder="Buscar bairro, logradouro, parcela..."
             style={{
-              width: '100%', padding: '10px 14px 10px 28px', border: '1px solid #d1d5db',
-              borderRadius: 8, fontSize: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              boxSizing: 'border-box', outline: 'none',
+              width: '100%', padding: '7px 12px', border: '1px solid #d1d5db',
+              borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
             }}
           />
-        </div>
-        {searchResults.length > 0 && (
-          <div style={{
-            background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
-            marginTop: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', overflow: 'hidden',
-          }}>
-            {searchResults.map((r, i) => {
-              const TIPO_COLORS: Record<string, string> = {
-                Bairro: '#7c3aed', Loteamento: '#b45309', Logradouro: '#0891b2',
-                Quadra: '#0f766e', Parcela: '#2563eb',
-              }
-              const cor = TIPO_COLORS[r._tipo] ?? '#374151'
-              const label = r.nome ?? r.codigo ?? r.id
-              const sub = r._tipo === 'Parcela'
-                ? [r.logradouro, r.bairro].filter(Boolean).join(' · ')
-                : r._tipo === 'Logradouro'
-                  ? r.bairro_nome ?? ''
-                  : r._tipo === 'Loteamento'
-                    ? r.decreto ?? ''
-                    : r._tipo === 'Quadra'
-                      ? r.loteamento_nome ?? ''
-                      : ''
-              return (
-                <button
-                  key={r.id ?? i}
-                  onClick={() => flyToResult(r)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    width: '100%', textAlign: 'left',
-                    padding: '8px 12px', border: 'none', background: 'white',
-                    cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f3f4f6',
-                  }}
-                >
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, color: cor,
-                    background: cor + '15', padding: '2px 6px', borderRadius: 4,
-                    whiteSpace: 'nowrap', flexShrink: 0,
-                  }}>
-                    {r._tipo}
-                  </span>
-                  <span style={{ fontWeight: 600, flexShrink: 0 }}>{label}</span>
-                  {sub && <span style={{ color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span>}
-                  {r._tipo === 'Parcela' && r.area_m2 && (
-                    <span style={{ color: '#9ca3af', fontSize: 11, marginLeft: 'auto', flexShrink: 0 }}>
-                      {Number(r.area_m2).toFixed(0)} m²
+          {searchResults.length > 0 && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1002,
+              background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
+              marginTop: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', overflow: 'hidden',
+            }}>
+              {searchResults.map((r, i) => {
+                const TIPO_COLORS: Record<string, string> = {
+                  Bairro: '#7c3aed', Loteamento: '#b45309', Logradouro: '#0891b2',
+                  Quadra: '#0f766e', Parcela: '#2563eb',
+                }
+                const cor = TIPO_COLORS[r._tipo] ?? '#374151'
+                const label = r.nome ?? r.codigo ?? r.id
+                const sub = r._tipo === 'Parcela'
+                  ? [r.logradouro, r.bairro].filter(Boolean).join(' · ')
+                  : r._tipo === 'Logradouro'
+                    ? r.bairro_nome ?? ''
+                    : r._tipo === 'Loteamento'
+                      ? r.decreto ?? ''
+                      : r._tipo === 'Quadra'
+                        ? r.loteamento_nome ?? ''
+                        : ''
+                return (
+                  <button
+                    key={r.id ?? i}
+                    onClick={() => flyToResult(r)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      width: '100%', textAlign: 'left',
+                      padding: '8px 12px', border: 'none', background: 'white',
+                      cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f3f4f6',
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, color: cor,
+                      background: cor + '15', padding: '2px 6px', borderRadius: 4,
+                      whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>
+                      {r._tipo}
                     </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
+                    <span style={{ fontWeight: 600, flexShrink: 0 }}>{label}</span>
+                    {sub && <span style={{ color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span>}
+                    {r._tipo === 'Parcela' && r.area_m2 && (
+                      <span style={{ color: '#9ca3af', fontSize: 11, marginLeft: 'auto', flexShrink: 0 }}>
+                        {Number(r.area_m2).toFixed(0)} m²
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>,
+        searchSlot,
+      )}
 
       {/* Ferramentas de medição */}
       <MeasureToolbar />

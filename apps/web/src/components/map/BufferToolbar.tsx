@@ -11,6 +11,7 @@ type ParcelaGeometry = {
 
 export function BufferToolbar() {
   const { map, selectedParcelaId, layerPanelOpen } = useMapStore()
+  const [open, setOpen] = useState(false)
   const [radius, setRadius] = useState('50')
   const [message, setMessage] = useState<string | null>(null)
   const layerRef = useRef<L.LayerGroup | null>(null)
@@ -87,6 +88,23 @@ export function BufferToolbar() {
     }
   }
 
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        title="Abrir buffer de geometria"
+        style={{
+          position: 'absolute', bottom: 36, right: layerPanelOpen ? 278 : 38, zIndex: 1001,
+          width: 40, height: 40, borderRadius: '50%', border: '1px solid #d1d5db',
+          background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.16)',
+          cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        ⭕
+      </button>
+    )
+  }
+
   return (
     <div style={{
       position: 'absolute', bottom: 36, right: layerPanelOpen ? 278 : 38, zIndex: 1001,
@@ -97,8 +115,18 @@ export function BufferToolbar() {
         width: 240, boxShadow: '0 2px 10px rgba(0,0,0,0.16)',
         fontSize: 12, color: '#111',
       }}>
-        <div style={{ marginBottom: 10, fontWeight: 700, color: '#1e3a5f' }}>
+        <div style={{ marginBottom: 10, fontWeight: 700, color: '#1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           Buffer de geometria
+          <button
+            onClick={() => setOpen(false)}
+            title="Minimizar"
+            style={{
+              border: 'none', background: 'none', cursor: 'pointer',
+              fontSize: 14, color: '#6b7280', padding: 2, lineHeight: 1,
+            }}
+          >
+            ✕
+          </button>
         </div>
         <label style={{ display: 'block', marginBottom: 6, color: '#4b5563' }}>
           Raio (m)
