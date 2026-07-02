@@ -102,8 +102,7 @@ async function bootstrap() {
 
   // Auto-cadastro de cidadão (req 11): qualquer pessoa pode criar sua própria
   // conta com perfil CIDADAO — sem depender de um ADMIN para provisioná-la.
-  // O perfil é fixado em CIDADAO via custom claim ANTES do primeiro login,
-  // pois o authMiddleware assume 'ADMIN' quando a claim 'perfil' está ausente.
+  // O perfil é fixado em CIDADAO via custom claim ANTES do primeiro login.
   app.post('/api/auto-cadastro', async (request, reply) => {
     const { z } = await import('zod')
     const { getAuth } = await import('firebase-admin/auth')

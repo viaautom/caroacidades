@@ -24,7 +24,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     request.user = {
       uid: decoded.uid,
       email: decoded.email ?? '',
-      perfil: (decoded.perfil as UserRole) ?? 'ADMIN',
+      perfil: (decoded.perfil as UserRole) ?? 'CIDADAO',
     }
   } catch {
     return reply.code(401).send({ error: 'Token inválido ou expirado' })
