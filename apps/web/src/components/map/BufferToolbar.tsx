@@ -10,7 +10,7 @@ type ParcelaGeometry = {
 }
 
 export function BufferToolbar() {
-  const { map, selectedParcelaId } = useMapStore()
+  const { map, selectedParcelaId, layerPanelOpen } = useMapStore()
   const [radius, setRadius] = useState('50')
   const [message, setMessage] = useState<string | null>(null)
   const layerRef = useRef<L.LayerGroup | null>(null)
@@ -89,7 +89,7 @@ export function BufferToolbar() {
 
   return (
     <div style={{
-      position: 'absolute', top: 140, right: 10, zIndex: 1001,
+      position: 'absolute', bottom: 36, right: layerPanelOpen ? 278 : 38, zIndex: 1001,
       display: 'flex', flexDirection: 'column', gap: 8,
     }}>
       <div style={{

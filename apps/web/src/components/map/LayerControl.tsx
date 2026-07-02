@@ -24,9 +24,11 @@ type Camada = { id: string; nome: string; cor: string; total_parcelas: number }
 type CamadaWms = { id: string; nome: string; categoria: string | null; ativa: boolean }
 
 export function LayerControl() {
-  const { activeLayers, toggleLayer, bairros, zoomToBairro } = useMapStore()
+  const {
+    activeLayers, toggleLayer, bairros, zoomToBairro,
+    layerPanelOpen: open, setLayerPanelOpen: setOpen,
+  } = useMapStore()
   const qc = useQueryClient()
-  const [open, setOpen] = useState(true)
   const [bairrosExpanded, setBairrosExpanded] = useState(false)
   const [bairroSearch, setBairroSearch] = useState('')
   const [uploading, setUploading] = useState(false)

@@ -24,6 +24,7 @@ type MapState = {
   activeLayers: string[]
   baseLayer: BaseLayerId
   bairros: BairroInfo[]
+  layerPanelOpen: boolean
   mvtRefreshKey: number
   postesRefreshKey: number
   arvoresRefreshKey: number
@@ -36,6 +37,7 @@ type MapState = {
   selectArvore: (id: string | null) => void
   selectPatrimonio: (id: string | null) => void
   toggleLayer: (layerId: string) => void
+  setLayerPanelOpen: (open: boolean) => void
   flyTo: (lat: number, lng: number, zoom?: number) => void
   flyToFeature: (lat: number, lng: number, layerId?: string, zoom?: number) => void
   setPendingTarget: (target: PendingTarget | null) => void
@@ -57,6 +59,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   activeLayers: ['parcelas', 'edificacoes', 'bairros'],
   baseLayer: 'osm',
   bairros: [],
+  layerPanelOpen: true,
   mvtRefreshKey: 0,
   postesRefreshKey: 0,
   arvoresRefreshKey: 0,
@@ -74,6 +77,7 @@ export const useMapStore = create<MapState>((set, get) => ({
         ? state.activeLayers.filter((l) => l !== layerId)
         : [...state.activeLayers, layerId],
     })),
+  setLayerPanelOpen: (open) => set({ layerPanelOpen: open }),
   flyTo: (lat, lng, zoom = 18) => {
     get().map?.flyTo([lat, lng], zoom, { animate: true, duration: 0.8 })
   },

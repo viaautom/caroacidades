@@ -85,7 +85,7 @@ async function fetchElevations(pts: L.LatLng[]): Promise<ElevPoint[]> {
 }
 
 export function MeasureToolbar() {
-  const { map } = useMapStore()
+  const { map, layerPanelOpen } = useMapStore()
   const [mode, setMode] = useState<Mode>('off')
   const [points, setPoints] = useState<L.LatLng[]>([])
   const [result, setResult] = useState('')
@@ -216,8 +216,9 @@ export function MeasureToolbar() {
 
   return (
     <div style={{
-      position: 'absolute', top: 60, right: 10, zIndex: 1001,
+      position: 'absolute', top: 60, right: layerPanelOpen ? 278 : 38, zIndex: 1001,
       display: 'flex', flexDirection: 'column', gap: 4,
+      maxHeight: 'calc(100% - 96px)', overflowY: 'auto',
     }}>
       {/* Botões de ativação */}
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
