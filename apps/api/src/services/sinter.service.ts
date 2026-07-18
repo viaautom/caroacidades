@@ -1,5 +1,5 @@
 import { query } from '../db/pool'
-import { getStorage } from 'firebase-admin/storage'
+import { uploadFile } from './supabase.service'
 
 const CODIGO_IBGE = '4322301' // Tupanciretã – RS (IBGE)
 
@@ -136,12 +136,8 @@ export function validarLote(parcelas: ParcelaSinterRow[]): {
   return { validas, erros }
 }
 
-export async function uploadXmlGcs(xml: string, envioId: string): Promise<string> {
-  const bucket = getStorage().bucket()
+export async function uploadXmlStorage(xml: string, envioId: string): Promise<string> {
   const path = `sinter/envios/${envioId}/sinter.xml`
-  const file = bucket.file(path)
-  await file.save(Buffer.from(xml, 'utf-8'), {
-    contentType: 'application/xml',
-  })
+  await uploadFile(path, Buffer.from(xml, 'utf-8'), 'application/xml')
   return path
 }

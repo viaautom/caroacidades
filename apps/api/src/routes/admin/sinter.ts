@@ -7,7 +7,7 @@ import {
   extrairParcelasSinter,
   gerarXmlSinter,
   validarLote,
-  uploadXmlGcs,
+  uploadXmlStorage,
 } from '../../services/sinter.service'
 
 async function getUsuarioId(uid: string): Promise<string | null> {
@@ -25,7 +25,7 @@ export async function sinterRoutes(app: FastifyInstance) {
   app.get('/admin/sinter/envios', async () => {
     return query(`
       SELECT e.id, e.numero_envio, e.tipo, e.status, e.qtd_parcelas,
-             e.arquivo_gcs, e.enviado_em, e.validado_em, e.created_at,
+             e.arquivo_storage, e.enviado_em, e.validado_em, e.created_at,
              jsonb_array_length(e.erros::jsonb) AS qtd_erros,
              u.nome AS criado_por_nome
       FROM sigweb.envios_sinter e
@@ -122,7 +122,7 @@ export async function sinterRoutes(app: FastifyInstance) {
         const { validas, erros } = validarLote(todasParcelas)
 
         const xml = gerarXmlSinter(validas, tipo, envio.numero_envio)
-        const arquivoGcs = await uploadXmlGcs(xml, envio.id)
+        const arquivoStorage = await uploadXmlStorage(xml, envio.id)
 
         // Registra cada parcela válida neste lote
         if (validas.length > 0) {
@@ -140,16 +140,16 @@ export async function sinterRoutes(app: FastifyInstance) {
 
         await query(`
           UPDATE sigweb.envios_sinter
-          SET status = 'validando', qtd_parcelas = $2, arquivo_gcs = $3, erros = $4::jsonb
+          SET status = 'validando', qtd_parcelas = $2, arquivo_storage = $3, erros = $4::jsonb
           WHERE id = $1
-        `, [envio.id, validas.length, arquivoGcs, JSON.stringify(erros)])
+        `, [envio.id, validas.length, arquivoStorage, JSON.stringify(erros)])
 
         return {
           id: envio.id,
           numero_envio: envio.numero_envio,
           qtd_parcelas: validas.length,
           qtd_erros: erros.length,
-          arquivo_gcs: arquivoGcs,
+          arquivo_storage: arquivoStorage,
         }
       } catch (err: any) {
         await query(`

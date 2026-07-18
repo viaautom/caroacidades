@@ -1,27 +1,18 @@
 import { useEffect } from 'react'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { supabase, decodePerfil } from '../lib/supabase'
 import { useAuthStore } from '../store/auth.store'
-import { UserRole } from '@sigweb/shared'
 
 export function useAuthInit() {
   const { setUser } = useAuthStore()
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          const tokenResult = await user.getIdTokenResult()
-          const perfil = (tokenResult.claims.perfil as UserRole) ?? 'ADMIN'
-          setUser(user, perfil)
-        } catch {
-          // Token fetch falhou (ex: offline); autentica com perfil padrão
-          setUser(user, 'ADMIN')
-        }
-      } else {
-        setUser(null)
-      }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null, session ? decodePerfil(session.access_token) : undefined)
     })
-    return unsubscribe
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null, session ? decodePerfil(session.access_token) : undefined)
+    })
+    return () => subscription.unsubscribe()
   }, [setUser])
 }

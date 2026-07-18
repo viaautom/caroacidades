@@ -5,10 +5,9 @@ import { usePermissionsStore, MODULOS, type PerfilKey } from '../store/permissio
 import { useMapStore } from '../store/map.store'
 import * as XLSX from 'xlsx'
 import shpjs from 'shpjs'
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import api from '../lib/api'
 import { useAuthStore } from '../store/auth.store'
-import { auth, storage } from '../lib/firebase'
+import { supabase, STORAGE_BUCKET } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
@@ -833,7 +832,8 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
   async function bootstrap() {
     setBootstrapping(true)
     try {
-      const token = await auth.currentUser?.getIdToken()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       const res = await fetch(`${import.meta.env.VITE_API_URL ?? ''}/api/admin/bootstrap`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -1164,7 +1164,6 @@ function TabImagens360() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({ titulo: '', lat: '', lng: '', heading: '0', capturadoEm: '' })
   const [arquivo, setArquivo] = useState<File | null>(null)
-  const [progresso, setProgresso] = useState<number | null>(null)
   const [salvando, setSalvando] = useState(false)
 
   const { data: panoramas = [], isLoading } = useQuery<any[]>({
@@ -1178,21 +1177,16 @@ function TabImagens360() {
     if (!form.lat || !form.lng) { toast.error('Informe latitude e longitude'); return }
 
     setSalvando(true)
-    setProgresso(0)
     try {
-      // 1. Upload para Firebase Storage
+      // 1. Upload para o Storage do Supabase
       const path = `panoramas/${Date.now()}_${arquivo.name.replace(/\s+/g, '_')}`
-      const sRef = storageRef(storage, path)
-      const task = uploadBytesResumable(sRef, arquivo)
-
-      const url = await new Promise<string>((resolve, reject) => {
-        task.on(
-          'state_changed',
-          snap => setProgresso(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
-          reject,
-          async () => resolve(await getDownloadURL(task.snapshot.ref))
-        )
-      })
+      const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(path, arquivo)
+      if (uploadError) throw uploadError
+      const { data: signed, error: signError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(path, 10 * 365 * 24 * 60 * 60)
+      if (signError) throw signError
+      const url = signed.signedUrl
 
       // 2. Registrar no banco
       await api.post('/imagens360', {
@@ -1213,7 +1207,6 @@ function TabImagens360() {
       toast.error('Erro: ' + (err?.message ?? 'Falha no upload'))
     } finally {
       setSalvando(false)
-      setProgresso(null)
     }
   }
 
@@ -1284,18 +1277,18 @@ function TabImagens360() {
           )}
         </div>
 
-        {/* Barra de progresso */}
-        {progresso !== null && (
+        {/* Indicador de envio */}
+        {salvando && (
           <div>
             <div style={{ background: '#e5e7eb', borderRadius: 99, overflow: 'hidden', height: 8 }}>
-              <div style={{ width: `${progresso}%`, height: '100%', background: '#2563eb', transition: 'width .3s' }} />
+              <div style={{ width: '100%', height: '100%', background: '#2563eb' }} />
             </div>
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6b7280' }}>Enviando… {progresso}%</p>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6b7280' }}>Enviando…</p>
           </div>
         )}
 
         <button style={btn()} onClick={enviar} disabled={salvando || !arquivo || !form.titulo}>
-          {salvando ? `Enviando ${progresso ?? 0}%...` : '↑ Upload e cadastrar'}
+          {salvando ? 'Enviando...' : '↑ Upload e cadastrar'}
         </button>
       </div>
 

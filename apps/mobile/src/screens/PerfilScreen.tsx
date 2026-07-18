@@ -3,9 +3,8 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
   ActivityIndicator, Alert, Share,
 } from 'react-native'
-import { signOut, updatePassword } from 'firebase/auth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { auth } from '../lib/firebase'
+import { supabase } from '../lib/supabase'
 import api from '../lib/api'
 
 type Me = {
@@ -55,16 +54,12 @@ export function PerfilScreen() {
     }
     setSalvandoSenha(true)
     try {
-      if (!auth.currentUser) throw new Error('sem usuário')
-      await updatePassword(auth.currentUser, novaSenha.trim())
+      const { error } = await supabase.auth.updateUser({ password: novaSenha.trim() })
+      if (error) throw error
       setNovaSenha('')
       Alert.alert('Senha alterada', 'Sua senha foi atualizada com sucesso.')
-    } catch (err: any) {
-      if (err?.code === 'auth/requires-recent-login') {
-        Alert.alert('Login necessário', 'Saia e entre novamente antes de alterar sua senha.')
-      } else {
-        Alert.alert('Erro', 'Não foi possível alterar a senha.')
-      }
+    } catch {
+      Alert.alert('Erro', 'Não foi possível alterar a senha.')
     } finally {
       setSalvandoSenha(false)
     }
@@ -113,7 +108,7 @@ export function PerfilScreen() {
         <Text style={styles.botaoSecundarioTexto}>📤 Compartilhar aplicativo</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.botaoSair} onPress={() => signOut(auth)}>
+      <TouchableOpacity style={styles.botaoSair} onPress={() => supabase.auth.signOut()}>
         <Text style={styles.botaoSairTexto}>Sair da conta</Text>
       </TouchableOpacity>
     </ScrollView>

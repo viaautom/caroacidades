@@ -3,9 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import L from 'leaflet'
 import toast from 'react-hot-toast'
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import api from '../lib/api'
-import { storage } from '../lib/firebase'
+import { supabase, STORAGE_BUCKET } from '../lib/supabase'
 import { CadastrosAuxiliaresPanel } from './SocialAuxiliares'
 
 const TUPANCIRETA: [number, number] = [-29.079, -53.841]
@@ -866,27 +865,22 @@ function AddDocumentoForm({ familiaId }: { familiaId: string }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [nome, setNome] = useState('')
   const [arquivo, setArquivo] = useState<File | null>(null)
-  const [progresso, setProgresso] = useState<number | null>(null)
   const [enviando, setEnviando] = useState(false)
 
   async function enviar() {
     if (!arquivo) { toast.error('Selecione um arquivo'); return }
     setEnviando(true)
-    setProgresso(0)
     try {
       const path = `social/familias/${familiaId}/${Date.now()}_${arquivo.name.replace(/\s+/g, '_')}`
-      const sRef = storageRef(storage, path)
-      const task = uploadBytesResumable(sRef, arquivo)
-      const url = await new Promise<string>((resolve, reject) => {
-        task.on('state_changed',
-          snap => setProgresso(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
-          reject,
-          async () => resolve(await getDownloadURL(task.snapshot.ref))
-        )
-      })
-      await api.post(`/social/familias/${familiaId}/documentos`, { nome: nome || arquivo.name, url })
+      const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(path, arquivo)
+      if (uploadError) throw uploadError
+      const { data: signed, error: signError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(path, 10 * 365 * 24 * 60 * 60)
+      if (signError) throw signError
+      await api.post(`/social/familias/${familiaId}/documentos`, { nome: nome || arquivo.name, url: signed.signedUrl })
       toast.success('Documento anexado')
-      setNome(''); setArquivo(null); setProgresso(null)
+      setNome(''); setArquivo(null)
       if (fileRef.current) fileRef.current.value = ''
       qc.invalidateQueries({ queryKey: ['social-familia', familiaId] })
     } catch {
@@ -900,7 +894,7 @@ function AddDocumentoForm({ familiaId }: { familiaId: string }) {
     <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: 10, marginTop: 6 }}>
       <input placeholder="Nome do documento (opcional)" value={nome} onChange={e => setNome(e.target.value)} style={{ ...inputSt, marginBottom: 6 }} />
       <input ref={fileRef} type="file" onChange={e => setArquivo(e.target.files?.[0] ?? null)} style={{ fontSize: 12, marginBottom: 6 }} />
-      {progresso != null && <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Enviando: {progresso}%</div>}
+      {enviando && <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Enviando...</div>}
       <button onClick={enviar} disabled={!arquivo || enviando} style={saveBtnSt}>Enviar</button>
     </div>
   )

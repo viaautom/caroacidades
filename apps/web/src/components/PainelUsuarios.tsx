@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../store/auth.store'
-import { auth } from '../lib/firebase'
+import { supabase } from '../lib/supabase'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 
@@ -41,7 +41,8 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
   async function bootstrap() {
     setBootstrapping(true)
     try {
-      const token = await auth.currentUser?.getIdToken()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       const res = await fetch(`${import.meta.env.VITE_API_URL ?? ''}/api/admin/bootstrap`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },

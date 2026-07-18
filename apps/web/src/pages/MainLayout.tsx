@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { signOut } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth.store'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { usePermissionsStore, type PerfilKey } from '../store/permissions.store'
@@ -163,7 +162,7 @@ export function MainLayout() {
   )
 
   async function handleLogout() {
-    await signOut(auth)
+    await supabase.auth.signOut()
     navigate('/login')
     toast.success('Saiu da sessão')
   }
@@ -236,7 +235,7 @@ export function MainLayout() {
             {PERFIL_LABEL[perfil ?? ''] ?? perfil}
           </p>
           <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user?.displayName ?? user?.email}
+            {user?.user_metadata?.nome ?? user?.email}
           </p>
           <button onClick={handleLogout}
             style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 13, width: '100%' }}>

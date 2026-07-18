@@ -5,7 +5,6 @@ import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
 import staticFiles from '@fastify/static'
 import path from 'path'
-import { initFirebase } from './services/firebase.service'
 import { parcelasRoutes } from './routes/cadastro/parcelas'
 import { edificacoesRoutes } from './routes/cadastro/edificacoes'
 import { bairrosRoutes } from './routes/cadastro/bairros'
@@ -35,8 +34,6 @@ import { usuariosRoutes } from './routes/cadastro/usuarios'
 import { permissoesRoutes, MIGRATION_PERMISSOES } from './routes/admin/permissoes'
 import { sinterRoutes } from './routes/admin/sinter'
 import { devRoutes } from './routes/admin/dev'
-
-initFirebase()
 
 const app = Fastify({
   logger: {
@@ -105,9 +102,8 @@ async function bootstrap() {
   // O perfil é fixado em CIDADAO via custom claim ANTES do primeiro login.
   app.post('/api/auto-cadastro', async (request, reply) => {
     const { z } = await import('zod')
-    const { getAuth } = await import('firebase-admin/auth')
+    const { supabaseAdmin } = await import('./services/supabase.service')
     const { query: dbQuery } = await import('./db/pool')
-    const { setUserPerfil } = await import('./services/firebase.service')
 
     const body = z.object({
       email: z.string().email(),
@@ -117,28 +113,25 @@ async function bootstrap() {
     }).safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Dados inválidos' })
 
-    let userRecord
-    try {
-      userRecord = await getAuth().createUser({
-        email: body.data.email,
-        displayName: body.data.nome,
-        password: body.data.senha,
-        emailVerified: false,
-      })
-    } catch (err: any) {
-      const mensagem = err.code === 'auth/email-already-exists'
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email: body.data.email,
+      password: body.data.senha,
+      email_confirm: false,
+      user_metadata: { nome: body.data.nome },
+    })
+    if (error || !data.user) {
+      const mensagem = error?.code === 'email_exists'
         ? 'Este e-mail já está cadastrado'
         : 'Não foi possível criar a conta'
       return reply.code(400).send({ error: mensagem })
     }
 
-    await setUserPerfil(userRecord.uid, 'CIDADAO')
     await dbQuery(
       `INSERT INTO sigweb.usuarios (firebase_uid, email, nome, celular, perfil, ativo)
        VALUES ($1, $2, $3, $4, 'CIDADAO', true)
        ON CONFLICT (firebase_uid) DO UPDATE
          SET email = EXCLUDED.email, nome = EXCLUDED.nome, celular = EXCLUDED.celular`,
-      [userRecord.uid, body.data.email, body.data.nome, body.data.celular]
+      [data.user.id, body.data.email, body.data.nome, body.data.celular]
     )
 
     reply.code(201)
@@ -150,12 +143,11 @@ async function bootstrap() {
   app.post('/api/admin/bootstrap', async (request, reply) => {
     const authHeader = request.headers.authorization
     if (!authHeader?.startsWith('Bearer ')) return reply.code(401).send({ error: 'Token não fornecido' })
-    const { getAuth } = await import('firebase-admin/auth')
+    const { verifySupabaseToken } = await import('./services/supabase.service')
     const { query: dbQuery } = await import('./db/pool')
-    const { setUserPerfil } = await import('./services/firebase.service')
 
-    let decoded: any
-    try { decoded = await getAuth().verifyIdToken(authHeader.slice(7)) }
+    let decoded: ReturnType<typeof verifySupabaseToken>
+    try { decoded = verifySupabaseToken(authHeader.slice(7)) }
     catch { return reply.code(401).send({ error: 'Token inválido' }) }
 
     const [{ count }] = await dbQuery<{ count: string }>(
@@ -165,25 +157,24 @@ async function bootstrap() {
       return reply.code(403).send({ error: 'Já existe um administrador. Peça a ele para gerenciar usuários.' })
     }
 
-    await setUserPerfil(decoded.uid, 'ADMIN')
     await dbQuery(
       `INSERT INTO sigweb.usuarios (firebase_uid, email, nome, perfil)
        VALUES ($1, $2, $3, 'ADMIN')
        ON CONFLICT (firebase_uid) DO UPDATE SET perfil = 'ADMIN'`,
-      [decoded.uid, decoded.email ?? '', decoded.name ?? decoded.email ?? '']
+      [decoded.uid, decoded.email, decoded.email]
     )
     return { ok: true, mensagem: 'Você agora é ADMIN. Faça logout e login novamente.' }
   })
 
   // Estatísticas do banco de dados (somente ADMIN)
   app.get('/api/admin/db-stats', async (request, reply) => {
-    const { getAuth } = await import('firebase-admin/auth')
+    const { verifySupabaseToken } = await import('./services/supabase.service')
     const { query: dbQuery } = await import('./db/pool')
 
     const authHeader = request.headers.authorization
     if (!authHeader?.startsWith('Bearer ')) return reply.code(401).send({ error: 'Token não fornecido' })
     try {
-      const decoded = await getAuth().verifyIdToken(authHeader.slice(7))
+      const decoded = verifySupabaseToken(authHeader.slice(7))
       if (decoded.perfil !== 'ADMIN') return reply.code(403).send({ error: 'Requer perfil ADMIN' })
     } catch { return reply.code(401).send({ error: 'Token inválido' }) }
 

@@ -3,8 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native'
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { supabase, decodePerfil } from '../lib/supabase'
 import { isFiscalRecadastramento } from '../contexts/AuthContext'
 
 // Login do fiscal de recadastramento — credenciais configuradas pelo sistema, sem auto-cadastro (req 169-equiv.)
@@ -19,11 +18,11 @@ export function LoginScreen() {
     if (!email || !senha) { setErro('Informe e-mail e senha.'); return }
     setLoading(true)
     try {
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), senha)
-      const tokenResult = await cred.user.getIdTokenResult()
-      const perfil = (tokenResult.claims.perfil as string | undefined) ?? null
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha })
+      if (error) throw error
+      const perfil = decodePerfil(data.session.access_token)
       if (!isFiscalRecadastramento(perfil)) {
-        await signOut(auth)
+        await supabase.auth.signOut()
         setErro('Este aplicativo é exclusivo para fiscais de recadastramento da prefeitura.')
       }
     } catch (err: any) {
@@ -69,10 +68,7 @@ export function LoginScreen() {
 
 function traduzErro(code?: string) {
   switch (code) {
-    case 'auth/invalid-email': return 'E-mail inválido.'
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found': return 'E-mail ou senha incorretos.'
+    case 'invalid_credentials': return 'E-mail ou senha incorretos.'
     default: return 'Não foi possível entrar. Tente novamente.'
   }
 }

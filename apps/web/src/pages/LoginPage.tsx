@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth.store'
 import api from '../lib/api'
@@ -35,10 +34,11 @@ export function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
       // navegação disparada pelo useEffect acima quando o auth state confirmar
     } catch (err: any) {
-      const msg = err.code === 'auth/invalid-credential'
+      const msg = err.code === 'invalid_credentials'
         ? 'E-mail ou senha inválidos'
         : 'Erro ao fazer login'
       toast.error(msg)
@@ -58,8 +58,9 @@ export function LoginPage() {
     setLoading(true)
     try {
       await api.post('/auto-cadastro', { nome, email, celular, senha: password })
-      await signInWithEmailAndPassword(auth, email, password)
-      if (auth.currentUser) await sendEmailVerification(auth.currentUser)
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      await supabase.auth.resend({ type: 'signup', email })
       toast.success('Conta criada! Verifique seu e-mail para confirmar o cadastro.')
     } catch (err: any) {
       toast.error(err.response?.data?.error ?? 'Erro ao criar a conta')

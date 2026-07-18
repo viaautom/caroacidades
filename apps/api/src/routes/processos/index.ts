@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { query, queryOne } from '../../db/pool'
 import { authMiddleware } from '../../middleware/auth.middleware'
 import { requireRole } from '../../middleware/rbac.middleware'
-import { getSignedUrl, deleteFile } from '../../services/firebase.service'
+import { getSignedUrl, deleteFile, uploadFile, downloadFile } from '../../services/supabase.service'
 
 // Garante sequences e converte colunas firebase_uid (TEXT) — idempotente
 export const MIGRATION_PROCESSOS_FIX = `
@@ -530,11 +530,9 @@ export async function processosRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Anotações só podem ser adicionadas em arquivos PDF' })
     }
 
-    const { getStorage } = await import('firebase-admin/storage')
     const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib')
 
-    const bucket = getStorage().bucket()
-    const [bytes] = await bucket.file(anexo.storage_path).download()
+    const bytes = await downloadFile(anexo.storage_path)
     const pdfDoc = await PDFDocument.load(bytes)
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
 
@@ -553,8 +551,8 @@ export async function processosRoutes(app: FastifyInstance) {
     const novosBytes = await pdfDoc.save()
     const novoNome = `Anotado - ${anexo.nome}`
     const novoPath = `processos/${processoId}/anexos/${Date.now()}_anotado_${anexo.nome.replace(/\s+/g, '_')}`
-    await bucket.file(novoPath).save(Buffer.from(novosBytes), { contentType: 'application/pdf' })
-    const url = await getSignedUrl(novoPath, 10 * 365 * 24 * 60 * 60 * 1000)
+    await uploadFile(novoPath, Buffer.from(novosBytes), 'application/pdf')
+    const url = await getSignedUrl(novoPath, 10 * 365 * 24 * 60 * 60)
 
     const [row] = await query<{ id: string }>(
       `INSERT INTO sigweb.anexos_processo (processo_id, nome, tipo_mime, tamanho_bytes, storage_path, url, created_by, anexo_original_id)

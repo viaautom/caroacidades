@@ -5,11 +5,11 @@ import {
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as Location from 'expo-location'
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { File } from 'expo-file-system'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
-import { storage } from '../lib/firebase'
+import { supabase, STORAGE_BUCKET } from '../lib/supabase'
 import { useAuth, isFiscal } from '../contexts/AuthContext'
 import api from '../lib/api'
 
@@ -69,13 +69,17 @@ export function NovaSolicitacaoScreen({ route, navigation }: Props) {
   })
 
   async function enviarFoto(uri: string): Promise<string> {
-    const resposta = await fetch(uri)
-    const blob = await resposta.blob()
+    const arrayBuffer = await new File(uri).arrayBuffer()
     const caminho = `chamados/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`
-    const ref = storageRef(storage, caminho)
-    const tarefa = uploadBytesResumable(ref, blob)
-    await new Promise<void>((resolve, reject) => tarefa.on('state_changed', undefined, reject, () => resolve()))
-    return getDownloadURL(tarefa.snapshot.ref)
+    const { error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(caminho, arrayBuffer, { contentType: 'image/jpeg' })
+    if (uploadError) throw uploadError
+    const { data: signed, error: signError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(caminho, 10 * 365 * 24 * 60 * 60)
+    if (signError) throw signError
+    return signed.signedUrl
   }
 
   async function adicionarFoto(origem: 'galeria' | 'camera') {

@@ -1,6 +1,6 @@
 import axios from 'axios'
 import Constants from 'expo-constants'
-import { auth } from './firebase'
+import { supabase } from './supabase'
 
 const API_URL = (Constants.expoConfig?.extra?.apiUrl as string | undefined) ?? 'http://localhost:3000'
 
@@ -10,10 +10,9 @@ const api = axios.create({
 })
 
 api.interceptors.request.use(async (config) => {
-  const user = auth.currentUser
-  if (user) {
-    const token = await user.getIdToken()
-    config.headers.Authorization = `Bearer ${token}`
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) {
+    config.headers.Authorization = `Bearer ${session.access_token}`
   }
   return config
 })

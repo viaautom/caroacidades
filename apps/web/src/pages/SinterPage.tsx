@@ -12,7 +12,7 @@ interface Envio {
   status: string
   qtd_parcelas: number
   qtd_erros: number
-  arquivo_gcs: string | null
+  arquivo_storage: string | null
   enviado_em: string | null
   validado_em: string | null
   created_at: string
@@ -271,7 +271,7 @@ export function SinterPage() {
             </div>
 
             <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
-              <div>Arquivo GCS: <code style={{ fontSize: 11 }}>{detalhe.arquivo_gcs ?? '—'}</code></div>
+              <div>Arquivo: <code style={{ fontSize: 11 }}>{detalhe.arquivo_storage ?? '—'}</code></div>
               <div>Enviado em: {fmt(detalhe.enviado_em)}</div>
               <div>Validado em: {fmt(detalhe.validado_em)}</div>
             </div>

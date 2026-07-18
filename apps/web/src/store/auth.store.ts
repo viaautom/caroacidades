@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { User } from 'firebase/auth'
+import { User } from '@supabase/supabase-js'
 import { UserRole } from '@sigweb/shared'
 
 interface AuthState {

@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
-import { storage } from '../lib/firebase'
+import { supabase, STORAGE_BUCKET } from '../lib/supabase'
 import { useMapStore } from '../store/map.store'
 import { useAuthStore } from '../store/auth.store'
 import { SIGMap } from '../components/map/SIGMap'
@@ -375,7 +374,7 @@ export function ProcessosPage({ tipo = 'aprovacao_projeto' }: { tipo?: string })
                   <Row key={c.nome} label={c.rotulo} value={String((detalhe.metadados as Record<string, unknown> | undefined)?.[c.nome] ?? '')} />
                 ))}
 
-              {detalhe.situacao === 'reprovado' && detalhe.created_by === user?.uid && (
+              {detalhe.situacao === 'reprovado' && detalhe.created_by === user?.id && (
                 <div style={{ marginTop: 16, padding: 12, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8 }}>
                   <p style={{ margin: '0 0 8px', fontSize: 12, color: '#991b1b' }}>
                     Este processo foi reprovado. Corrija os formulários das etapas reprovadas abaixo e reenvie para nova análise.
@@ -581,30 +580,28 @@ function AnexoRow({ anexo, processoId }: { anexo: Anexo; processoId: string }) {
 // Envia um novo anexo para o Storage e registra no processo
 function AddAnexoForm({ processoId }: { processoId: string }) {
   const qc = useQueryClient()
-  const [progresso, setProgresso] = useState<number | null>(null)
+  const [enviando, setEnviando] = useState(false)
 
   const upload = useMutation({
     mutationFn: async (arquivo: File) => {
+      setEnviando(true)
       const path = `processos/${processoId}/anexos/${Date.now()}_${arquivo.name.replace(/\s+/g, '_')}`
-      const sRef = storageRef(storage, path)
-      const task = uploadBytesResumable(sRef, arquivo)
-      const url = await new Promise<string>((resolve, reject) => {
-        task.on('state_changed',
-          snap => setProgresso(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-          reject,
-          async () => resolve(await getDownloadURL(task.snapshot.ref))
-        )
-      })
+      const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(path, arquivo)
+      if (uploadError) throw uploadError
+      const { data: signed, error: signError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(path, 10 * 365 * 24 * 60 * 60)
+      if (signError) throw signError
       await api.post(`/processos/${processoId}/anexos`, {
-        nome: arquivo.name, storagePath: path, url, tipoMime: arquivo.type, tamanhoBytes: arquivo.size,
+        nome: arquivo.name, storagePath: path, url: signed.signedUrl, tipoMime: arquivo.type, tamanhoBytes: arquivo.size,
       })
     },
     onSuccess: () => {
       toast.success('Anexo adicionado')
-      setProgresso(null)
+      setEnviando(false)
       qc.invalidateQueries({ queryKey: ['processo-detalhe', processoId] })
     },
-    onError: () => { toast.error('Erro ao enviar anexo'); setProgresso(null) },
+    onError: () => { toast.error('Erro ao enviar anexo'); setEnviando(false) },
   })
 
   return (
@@ -615,7 +612,7 @@ function AddAnexoForm({ processoId }: { processoId: string }) {
         disabled={upload.isPending}
         style={{ fontSize: 12 }}
       />
-      {progresso !== null && <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0' }}>Enviando... {progresso}%</p>}
+      {enviando && <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0' }}>Enviando...</p>}
     </div>
   )
 }

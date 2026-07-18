@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
-import { signOut } from 'firebase/auth'
+import { supabase } from '../lib/supabase'
 import { useNetInfo } from '@react-native-community/netinfo'
 import { useFocusEffect } from '@react-navigation/native'
 import { useQuery } from '@tanstack/react-query'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
-import { auth } from '../lib/firebase'
 import { listarBics, type BicColetado } from '../lib/bics'
 import { lerCacheLoteamentos, salvarCacheLoteamentos, type Loteamento } from '../lib/cache'
 import api from '../lib/api'
@@ -45,7 +44,7 @@ export function LoteamentosScreen({ navigation }: Props) {
   }, []))
 
   function sair() {
-    signOut(auth)
+    supabase.auth.signOut()
   }
 
   return (

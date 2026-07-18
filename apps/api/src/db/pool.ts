@@ -1,16 +1,11 @@
 import { Pool } from 'pg'
 
-// Cloud SQL via Unix socket (host=/cloudsql/...) não suporta SSL —
-// SSL só faz sentido em conexões TCP puras.
-const connStr = process.env.DATABASE_URL ?? ''
-const isUnixSocket = connStr.includes('host=/')
-
 const pool = new Pool({
-  connectionString: connStr,
+  connectionString: process.env.DATABASE_URL,
   max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
-  ssl: isUnixSocket ? false : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false),
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 })
 
 pool.on('error', (err) => {

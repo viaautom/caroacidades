@@ -15,10 +15,10 @@
     "@fastify/multipart": "^8.3.0",
     "@fastify/rate-limit": "^9.1.0",
     "@fastify/static": "^7.0.4",
-    "@google-cloud/storage": "^7.9.0",
     "@sigweb/shared": "*",
+    "@supabase/supabase-js": "^2.45.0",
     "fastify": "^4.27.0",
-    "firebase-admin": "^12.1.0",
+    "jsonwebtoken": "^9.0.2",
     "jspdf": "^2.5.1",
     "jszip": "^3.10.1",
     "pdf-lib": "^1.17.1",
@@ -29,6 +29,7 @@
     "zod": "^3.23.6"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.12.12",
     "@types/pg": "^8.11.6",
     "tsx": "^4.11.0",

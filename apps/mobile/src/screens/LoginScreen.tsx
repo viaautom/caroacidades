@@ -3,10 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
 } from 'react-native'
-import {
-  signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile,
-} from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { supabase } from '../lib/supabase'
 
 // Login e criação de conta do cidadão (req 155)
 export function LoginScreen() {
@@ -23,11 +20,16 @@ export function LoginScreen() {
     setLoading(true)
     try {
       if (modo === 'login') {
-        await signInWithEmailAndPassword(auth, email.trim(), senha)
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha })
+        if (error) throw error
       } else {
         if (!nome.trim()) { setErro('Informe seu nome.'); return }
-        const cred = await createUserWithEmailAndPassword(auth, email.trim(), senha)
-        await updateProfile(cred.user, { displayName: nome.trim() })
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password: senha,
+          options: { data: { nome: nome.trim() } },
+        })
+        if (error) throw error
       }
     } catch (err: any) {
       setErro(traduzErro(err?.code))
@@ -96,12 +98,9 @@ export function LoginScreen() {
 
 function traduzErro(code?: string) {
   switch (code) {
-    case 'auth/invalid-email': return 'E-mail inválido.'
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found': return 'E-mail ou senha incorretos.'
-    case 'auth/email-already-in-use': return 'Este e-mail já está cadastrado.'
-    case 'auth/weak-password': return 'A senha deve ter pelo menos 6 caracteres.'
+    case 'invalid_credentials': return 'E-mail ou senha incorretos.'
+    case 'user_already_exists': return 'Este e-mail já está cadastrado.'
+    case 'weak_password': return 'A senha deve ter pelo menos 6 caracteres.'
     default: return 'Não foi possível concluir. Tente novamente.'
   }
 }

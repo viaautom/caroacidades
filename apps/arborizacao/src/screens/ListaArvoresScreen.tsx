@@ -2,16 +2,14 @@ import { useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
 } from 'react-native'
-import { signOut } from 'firebase/auth'
 import { useNetInfo } from '@react-native-community/netinfo'
 import { File, Paths } from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { useFocusEffect } from '@react-navigation/native'
 import { useCallback } from 'react'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../navigation/RootNavigator'
-import { auth, storage } from '../lib/firebase'
+import { supabase, STORAGE_BUCKET } from '../lib/supabase'
 import { listarColetas, salvarColeta, type ColetaArvore } from '../lib/coletas'
 import api from '../lib/api'
 
@@ -35,13 +33,17 @@ export function ListaArvoresScreen({ navigation }: Props) {
 
   async function enviarFoto(uri: string): Promise<string> {
     if (uri.startsWith('http')) return uri
-    const resposta = await fetch(uri)
-    const blob = await resposta.blob()
+    const arrayBuffer = await new File(uri).arrayBuffer()
     const caminho = `arvores/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`
-    const ref = storageRef(storage, caminho)
-    const tarefa = uploadBytesResumable(ref, blob)
-    await new Promise<void>((resolve, reject) => tarefa.on('state_changed', undefined, reject, () => resolve()))
-    return getDownloadURL(tarefa.snapshot.ref)
+    const { error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(caminho, arrayBuffer, { contentType: 'image/jpeg' })
+    if (uploadError) throw uploadError
+    const { data: signed, error: signError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(caminho, 10 * 365 * 24 * 60 * 60)
+    if (signError) throw signError
+    return signed.signedUrl
   }
 
   async function sincronizar() {
@@ -105,7 +107,7 @@ export function ListaArvoresScreen({ navigation }: Props) {
   function sair() {
     Alert.alert('Sair', 'Deseja encerrar a sessão?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: () => signOut(auth) },
+      { text: 'Sair', style: 'destructive', onPress: () => supabase.auth.signOut() },
     ])
   }
 

@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { query } from '../../db/pool'
 import { authMiddleware } from '../../middleware/auth.middleware'
 import { requireRole } from '../../middleware/rbac.middleware'
-import { sendPushNotification } from '../../services/firebase.service'
+import { sendExpoPushNotification } from '../../services/supabase.service'
 
 // Configuração de categorias de chamado: boletim/questionário (req 132/150),
 // hierarquia pai/filho (req 134) e cor/ícone (req 135)
@@ -14,7 +14,7 @@ export const MIGRATION_MOBILE_CATEGORIAS = `
   ALTER TABLE sigweb.categorias_chamado    ADD COLUMN IF NOT EXISTS cor               VARCHAR(9);
   ALTER TABLE sigweb.categorias_chamado    ADD COLUMN IF NOT EXISTS icone_url         TEXT;
   ALTER TABLE sigweb.solicitacoes_chamado  ADD COLUMN IF NOT EXISTS respostas_boletim JSONB NOT NULL DEFAULT '{}';
-  ALTER TABLE sigweb.usuarios              ADD COLUMN IF NOT EXISTS fcm_token         TEXT;
+  ALTER TABLE sigweb.usuarios              ADD COLUMN IF NOT EXISTS expo_push_token   TEXT;
   ALTER TABLE sigweb.usuarios              ADD COLUMN IF NOT EXISTS data_nascimento   DATE;
   ALTER TABLE sigweb.usuarios              ADD COLUMN IF NOT EXISTS celular           VARCHAR(20);
   ALTER TABLE sigweb.arvores               ADD COLUMN IF NOT EXISTS foto_urls         TEXT[] NOT NULL DEFAULT '{}';
@@ -45,7 +45,7 @@ async function resolveUsuarioId(uid: string, email: string): Promise<string> {
   return criado.id
 }
 
-// Registra notificação interna (sino) e dispara push FCM ao cidadão — req 144/146/147
+// Registra notificação interna (sino) e dispara push Expo ao cidadão — req 144/146/147
 async function notificarCidadao(
   usuarioId: string,
   tipo: string,
@@ -59,12 +59,12 @@ async function notificarCidadao(
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [usuarioId, tipo, titulo, conteudo, referenciaId, criadoPor]
   )
-  const [usuario] = await query<{ fcm_token: string | null }>(
-    `SELECT fcm_token FROM sigweb.usuarios WHERE id = $1`,
+  const [usuario] = await query<{ expo_push_token: string | null }>(
+    `SELECT expo_push_token FROM sigweb.usuarios WHERE id = $1`,
     [usuarioId]
   )
-  if (usuario?.fcm_token) {
-    await sendPushNotification(usuario.fcm_token, titulo, conteudo, { tipo, referenciaId })
+  if (usuario?.expo_push_token) {
+    await sendExpoPushNotification(usuario.expo_push_token, titulo, conteudo, { tipo, referenciaId })
   }
 }
 
@@ -417,14 +417,14 @@ export async function mobileRoutes(app: FastifyInstance) {
     }
   )
 
-  // Registrar/atualizar token do dispositivo para notificações push (FCM) — req 144/146/147
+  // Registrar/atualizar token do dispositivo para notificações push (Expo) — req 144/146/147
   app.put('/mobile/dispositivo', async (request) => {
-    const { fcmToken } = z.object({ fcmToken: z.string().min(1) }).parse(request.body)
-    await query(`UPDATE sigweb.usuarios SET fcm_token = $2 WHERE firebase_uid = $1`, [request.user.uid, fcmToken])
+    const { expoPushToken } = z.object({ expoPushToken: z.string().min(1) }).parse(request.body)
+    await query(`UPDATE sigweb.usuarios SET expo_push_token = $2 WHERE firebase_uid = $1`, [request.user.uid, expoPushToken])
     return { ok: true }
   })
 
-  // Atualizar situação (fase) de chamado — notifica o cidadão via sino + push FCM — req 146
+  // Atualizar situação (fase) de chamado — notifica o cidadão via sino + push Expo — req 146
   // e registra a transição no histórico (req 152)
   app.patch(
     '/mobile/chamados/:id/situacao',
@@ -490,7 +490,7 @@ export async function mobileRoutes(app: FastifyInstance) {
     )
   )
 
-  // Alterar categoria do chamado — notifica o cidadão via sino + push FCM — req 143/144
+  // Alterar categoria do chamado — notifica o cidadão via sino + push Expo — req 143/144
   app.patch(
     '/mobile/chamados/:id/categoria',
     { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO') },
@@ -559,7 +559,7 @@ export async function mobileRoutes(app: FastifyInstance) {
         [id, JSON.stringify(mensagens)]
       )
 
-      // Notifica o cidadão (sino + push FCM, req 147) — mensagens privadas ficam restritas à equipe (req 148)
+      // Notifica o cidadão (sino + push Expo, req 147) — mensagens privadas ficam restritas à equipe (req 148)
       if (body.publica && chamado[0].solicitante_id) {
         await notificarCidadao(
           chamado[0].solicitante_id, 'chamado_mensagem',
