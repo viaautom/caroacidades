@@ -1,12 +1,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
-COPY packages/shared/package*.json ./packages/shared/
+COPY . .
 RUN npm ci --workspace=packages/shared --workspace=apps/api
-COPY packages/shared ./packages/shared
-COPY apps/api ./apps/api
-COPY shapefiles ./shapefiles
 RUN npm run build --workspace=packages/shared
 RUN npm run build --workspace=apps/api
 
