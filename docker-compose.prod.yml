@@ -24,8 +24,10 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      LOG_LEVEL: '${LOG_LEVEL:-info}'
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      CORS_ORIGIN: '*'
+      CORS_ORIGIN: '${CORS_ORIGIN:-*}'
+      SOCIAL_ENC_KEY: '${SOCIAL_ENC_KEY}'
       SUPABASE_URL: '${SUPABASE_URL}'
       SUPABASE_SERVICE_ROLE_KEY: '${SUPABASE_SERVICE_ROLE_KEY}'
       SUPABASE_JWT_SECRET: '${SUPABASE_JWT_SECRET}'
