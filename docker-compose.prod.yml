@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  # 1. Servidor de mapas (MVT) lendo do PostGIS do Supabase
+  pg_tileserv:
+    image: ghcr.io/crunchydata/pg_tileserv:latest
+    container_name: sigweb-tileserv
+    environment:
+      # Conecta no db do compose do supabase usando o hostname da rede compartilhada
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    ports:
+      - '7800:7800'
+    restart: unless-stopped
+    networks:
+      - default
+      - supabase_network
+
+  # 2. Backend (API Fastify)
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: sigweb-api
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      CORS_ORIGIN: '*'
+      SUPABASE_URL: '${SUPABASE_URL}'
+      SUPABASE_SERVICE_ROLE_KEY: '${SUPABASE_SERVICE_ROLE_KEY}'
+      SUPABASE_JWT_SECRET: '${SUPABASE_JWT_SECRET}'
+      SUPABASE_STORAGE_BUCKET: 'sigweb'
+    ports:
+      - '3001:3001'
+    restart: unless-stopped
+    networks:
+      - default
+      - supabase_network
+
+  # 3. Frontend (React/Vite servido via Nginx)
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SUPABASE_URL: '${SUPABASE_URL}'
+        VITE_SUPABASE_ANON_KEY: '${SUPABASE_ANON_KEY}'
+        VITE_SUPABASE_STORAGE_BUCKET: 'sigweb'
+        VITE_PG_TILESERV_URL: '${VITE_PG_TILESERV_URL}'
+    container_name: sigweb-web
+    ports:
+      - '8080:8080'
+    restart: unless-stopped
+
+networks:
+  default:
+  supabase_network:
+    external: true
+    # O Dokploy geralmente nomeia a rede do Compose como <nome-do-compose>_default
+    name: supabase_default

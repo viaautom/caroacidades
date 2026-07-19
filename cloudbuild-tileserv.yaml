@@ -1,9 +1,0 @@
-steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['pull', 'ghcr.io/crunchydata/pg_tileserv:latest']
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['tag', 'ghcr.io/crunchydata/pg_tileserv:latest', 'gcr.io/$PROJECT_ID/pg_tileserv:latest']
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/pg_tileserv:latest']
-images:
-  - 'gcr.io/$PROJECT_ID/pg_tileserv:latest'
