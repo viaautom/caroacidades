@@ -29,16 +29,16 @@ export const MIGRATION_CHAMADOS_HISTORICO = `
 `
 
 // Resolve o id em sigweb.usuarios do cidadão autenticado, criando o registro no primeiro acesso
-// (solicitante_id referencia usuarios.id — um UUID — e não o firebase_uid)
+// (solicitante_id referencia usuarios.id — um UUID — e não o auth_uid)
 async function resolveUsuarioId(uid: string, email: string): Promise<string> {
   const [existente] = await query<{ id: string }>(
-    `SELECT id FROM sigweb.usuarios WHERE firebase_uid = $1`, [uid]
+    `SELECT id FROM sigweb.usuarios WHERE auth_uid = $1`, [uid]
   )
   if (existente) return existente.id
   const [criado] = await query<{ id: string }>(
-    `INSERT INTO sigweb.usuarios (firebase_uid, email, perfil)
+    `INSERT INTO sigweb.usuarios (auth_uid, email, perfil)
      VALUES ($1, $2, 'CIDADAO')
-     ON CONFLICT (firebase_uid) DO UPDATE SET email = EXCLUDED.email
+     ON CONFLICT (auth_uid) DO UPDATE SET email = EXCLUDED.email
      RETURNING id`,
     [uid, email]
   )
@@ -64,7 +64,11 @@ async function notificarCidadao(
     [usuarioId]
   )
   if (usuario?.expo_push_token) {
-    await sendExpoPushNotification(usuario.expo_push_token, titulo, conteudo, { tipo, referenciaId })
+    const result = await sendExpoPushNotification(usuario.expo_push_token, titulo, conteudo, { tipo, referenciaId })
+    if (result.isInvalidToken) {
+      // Remove o token inválido para evitar envios futuros falhos
+      await query(`UPDATE sigweb.usuarios SET expo_push_token = NULL WHERE id = $1`, [usuarioId])
+    }
   }
 }
 
@@ -258,13 +262,13 @@ export async function mobileRoutes(app: FastifyInstance) {
   const usuarioMeColunas = `id, nome, email, perfil, data_nascimento, celular`
   app.get('/mobile/me', async (request) => {
     const [usuario] = await query(
-      `SELECT ${usuarioMeColunas} FROM sigweb.usuarios WHERE firebase_uid = $1`,
+      `SELECT ${usuarioMeColunas} FROM sigweb.usuarios WHERE auth_uid = $1`,
       [request.user.uid]
     )
     if (usuario) return usuario
     await resolveUsuarioId(request.user.uid, request.user.email)
     const [criado] = await query(
-      `SELECT ${usuarioMeColunas} FROM sigweb.usuarios WHERE firebase_uid = $1`,
+      `SELECT ${usuarioMeColunas} FROM sigweb.usuarios WHERE auth_uid = $1`,
       [request.user.uid]
     )
     return criado
@@ -287,10 +291,10 @@ export async function mobileRoutes(app: FastifyInstance) {
     if (body.celular !== undefined)        { updates.push(`celular = $${idx++}`);         params.push(body.celular) }
     if (updates.length) {
       params.push(request.user.uid)
-      await query(`UPDATE sigweb.usuarios SET ${updates.join(', ')}, updated_at = now() WHERE firebase_uid = $${idx}`, params)
+      await query(`UPDATE sigweb.usuarios SET ${updates.join(', ')}, updated_at = now() WHERE auth_uid = $${idx}`, params)
     }
     const [usuario] = await query(
-      `SELECT ${usuarioMeColunas} FROM sigweb.usuarios WHERE firebase_uid = $1`,
+      `SELECT ${usuarioMeColunas} FROM sigweb.usuarios WHERE auth_uid = $1`,
       [request.user.uid]
     )
     return usuario
@@ -420,7 +424,7 @@ export async function mobileRoutes(app: FastifyInstance) {
   // Registrar/atualizar token do dispositivo para notificações push (Expo) — req 144/146/147
   app.put('/mobile/dispositivo', async (request) => {
     const { expoPushToken } = z.object({ expoPushToken: z.string().min(1) }).parse(request.body)
-    await query(`UPDATE sigweb.usuarios SET expo_push_token = $2 WHERE firebase_uid = $1`, [request.user.uid, expoPushToken])
+    await query(`UPDATE sigweb.usuarios SET expo_push_token = $2 WHERE auth_uid = $1`, [request.user.uid, expoPushToken])
     return { ok: true }
   })
 
@@ -540,7 +544,7 @@ export async function mobileRoutes(app: FastifyInstance) {
       if (chamado.length === 0) return reply.code(404).send({ error: 'Chamado não encontrado' })
 
       const autor = await query<{ id: string; nome: string }>(
-        `SELECT id, nome FROM sigweb.usuarios WHERE firebase_uid = $1`,
+        `SELECT id, nome FROM sigweb.usuarios WHERE auth_uid = $1`,
         [request.user.uid]
       )
 

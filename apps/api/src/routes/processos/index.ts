@@ -5,7 +5,7 @@ import { authMiddleware } from '../../middleware/auth.middleware'
 import { requireRole } from '../../middleware/rbac.middleware'
 import { getSignedUrl, deleteFile, uploadFile, downloadFile } from '../../services/supabase.service'
 
-// Garante sequences e converte colunas firebase_uid (TEXT) — idempotente
+// Garante sequences e converte colunas auth_uid (TEXT) — idempotente
 export const MIGRATION_PROCESSOS_FIX = `
   CREATE SEQUENCE IF NOT EXISTS sigweb.seq_aprovacao_projeto START 1;
   CREATE SEQUENCE IF NOT EXISTS sigweb.seq_habite_se         START 1;
@@ -418,7 +418,7 @@ export async function processosRoutes(app: FastifyInstance) {
       const { processoId, etapaId } = request.params as { processoId: string; etapaId: string }
       const { situacao, parecer } = request.body as { situacao: 'aprovado' | 'reprovado'; parecer: string }
 
-      // $1=etapaId $2=situacao $3=parecer $4=analista(firebase_uid) $5=processoId
+      // $1=etapaId $2=situacao $3=parecer $4=analista(auth_uid) $5=processoId
       await query(
         `UPDATE sigweb.etapas_processo
          SET situacao = $2, parecer = $3, analista_id = $4, concluida_em = now()

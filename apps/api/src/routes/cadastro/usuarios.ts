@@ -14,18 +14,18 @@ export async function usuariosRoutes(app: FastifyInstance) {
   // Listar usuários do banco de dados
   app.get('/usuarios', { preHandler: requireRole('ADMIN') }, async () => {
     const rows = await query<{
-      firebase_uid: string
+      auth_uid: string
       email: string | null
       nome: string | null
       perfil: string
       ativo: boolean
     }>(
-      `SELECT firebase_uid, email, nome, perfil, ativo
+      `SELECT auth_uid, email, nome, perfil, ativo
        FROM sigweb.usuarios
        ORDER BY nome`)
     return rows.map(u => ({
-      id: u.firebase_uid,
-      firebase_uid: u.firebase_uid,
+      id: u.auth_uid,
+      auth_uid: u.auth_uid,
       email: u.email ?? '',
       nome: u.nome ?? '',
       perfil: u.perfil,
@@ -53,9 +53,9 @@ export async function usuariosRoutes(app: FastifyInstance) {
     }
 
     await query(
-      `INSERT INTO sigweb.usuarios (firebase_uid, email, nome, perfil, ativo)
+      `INSERT INTO sigweb.usuarios (auth_uid, email, nome, perfil, ativo)
        VALUES ($1, $2, $3, $4, true)
-       ON CONFLICT (firebase_uid) DO UPDATE
+       ON CONFLICT (auth_uid) DO UPDATE
          SET email = EXCLUDED.email,
              nome = EXCLUDED.nome,
              perfil = EXCLUDED.perfil,
@@ -74,7 +74,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
     const { uid } = request.params as { uid: string }
     const { perfil } = z.object({ perfil: perfilSchema }).parse(request.body)
     await query(
-      `UPDATE sigweb.usuarios SET perfil = $2, updated_at = now() WHERE firebase_uid = $1`,
+      `UPDATE sigweb.usuarios SET perfil = $2, updated_at = now() WHERE auth_uid = $1`,
       [uid, perfil]
     )
     return { ok: true }
@@ -86,7 +86,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
     const { ativo } = z.object({ ativo: z.boolean() }).parse(request.body)
     await supabaseAdmin.auth.admin.updateUserById(uid, { ban_duration: ativo ? 'none' : '876000h' })
     await query(
-      `UPDATE sigweb.usuarios SET ativo = $2, updated_at = now() WHERE firebase_uid = $1`,
+      `UPDATE sigweb.usuarios SET ativo = $2, updated_at = now() WHERE auth_uid = $1`,
       [uid, ativo]
     )
     return { ok: true }
@@ -96,7 +96,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
   app.delete('/usuarios/:uid', { preHandler: requireRole('ADMIN') }, async (request, reply) => {
     const { uid } = request.params as { uid: string }
     await supabaseAdmin.auth.admin.deleteUser(uid)
-    await query(`DELETE FROM sigweb.usuarios WHERE firebase_uid = $1`, [uid])
+    await query(`DELETE FROM sigweb.usuarios WHERE auth_uid = $1`, [uid])
     reply.code(204)
   })
 }

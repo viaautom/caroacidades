@@ -12,7 +12,7 @@ import {
 
 async function getUsuarioId(uid: string): Promise<string | null> {
   const row = await queryOne<{ id: string }>(
-    `SELECT id FROM sigweb.usuarios WHERE firebase_uid = $1`,
+    `SELECT id FROM sigweb.usuarios WHERE auth_uid = $1`,
     [uid]
   )
   return row?.id ?? null

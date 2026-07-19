@@ -62,14 +62,28 @@ export async function sendExpoPushNotification(
   title: string,
   body: string,
   data?: Record<string, string>
-) {
+): Promise<{ success: boolean; isInvalidToken?: boolean }> {
   try {
-    await fetch('https://exp.host/--/api/v2/push/send', {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ to: expoPushToken, title, body, data }),
     })
+    const result = await response.json()
+    
+    // O Expo retorna 200 OK mesmo quando o push falha logicamente (ex: token inválido)
+    // O array data contém o detalhe do envio.
+    const pushData = result?.data
+    if (pushData && pushData.status === 'error') {
+      const errorType = pushData.details?.error
+      if (errorType === 'DeviceNotRegistered') {
+        return { success: false, isInvalidToken: true }
+      }
+      return { success: false }
+    }
+    return { success: true }
   } catch (err) {
     console.warn('Falha ao enviar push Expo:', err)
+    return { success: false }
   }
 }

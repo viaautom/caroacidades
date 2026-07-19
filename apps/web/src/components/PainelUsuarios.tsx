@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 
-type Usuario = { id: string; firebase_uid?: string; email: string; nome: string; perfil: string; ativo: boolean }
+type Usuario = { id: string; auth_uid?: string; email: string; nome: string; perfil: string; ativo: boolean }
 
 const ROLES = ['ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO'] as const
 
@@ -248,13 +248,13 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <select
                       defaultValue={u.perfil}
-                      onChange={e => setPerfil(u.firebase_uid ?? u.id, e.target.value)}
+                      onChange={e => setPerfil(u.auth_uid ?? u.id, e.target.value)}
                       style={{ ...inputSt, flex: 1, fontSize: 12, padding: '5px 8px' }}
                     >
                       {ROLES.map(r => <option key={r} value={r}>{PERFIL_LABEL[r]}</option>)}
                     </select>
                     <button
-                      onClick={() => setAtivo(u.firebase_uid ?? u.id, !u.ativo)}
+                      onClick={() => setAtivo(u.auth_uid ?? u.id, !u.ativo)}
                       style={{
                         padding: '5px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap',
                         background: u.ativo !== false ? '#fee2e2' : '#dcfce7',

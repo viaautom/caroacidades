@@ -127,9 +127,9 @@ async function bootstrap() {
     }
 
     await dbQuery(
-      `INSERT INTO sigweb.usuarios (firebase_uid, email, nome, celular, perfil, ativo)
+      `INSERT INTO sigweb.usuarios (auth_uid, email, nome, celular, perfil, ativo)
        VALUES ($1, $2, $3, $4, 'CIDADAO', true)
-       ON CONFLICT (firebase_uid) DO UPDATE
+       ON CONFLICT (auth_uid) DO UPDATE
          SET email = EXCLUDED.email, nome = EXCLUDED.nome, celular = EXCLUDED.celular`,
       [data.user.id, body.data.email, body.data.nome, body.data.celular]
     )
@@ -158,9 +158,9 @@ async function bootstrap() {
     }
 
     await dbQuery(
-      `INSERT INTO sigweb.usuarios (firebase_uid, email, nome, perfil)
+      `INSERT INTO sigweb.usuarios (auth_uid, email, nome, perfil)
        VALUES ($1, $2, $3, 'ADMIN')
-       ON CONFLICT (firebase_uid) DO UPDATE SET perfil = 'ADMIN'`,
+       ON CONFLICT (auth_uid) DO UPDATE SET perfil = 'ADMIN'`,
       [decoded.uid, decoded.email, decoded.email]
     )
     return { ok: true, mensagem: 'Você agora é ADMIN. Faça logout e login novamente.' }

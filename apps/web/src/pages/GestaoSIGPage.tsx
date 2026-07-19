@@ -978,7 +978,7 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
                     {perfil === 'ADMIN' ? (
                       <select
                         defaultValue={u.perfil}
-                        onChange={e => setPerfil(u.firebase_uid ?? u.id, e.target.value)}
+                        onChange={e => setPerfil(u.auth_uid ?? u.id, e.target.value)}
                         style={{ ...input, width: 180, padding: '4px 8px' }}
                       >
                         {ROLES.map(r => <option key={r} value={r}>{PERFIL_LABEL[r] ?? r}</option>)}
@@ -990,7 +990,7 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
                   <td style={{ padding: '8px 12px' }}>
                     {perfil === 'ADMIN' && (
                       <button
-                        onClick={() => setAtivo(u.firebase_uid ?? u.id, !u.ativo)}
+                        onClick={() => setAtivo(u.auth_uid ?? u.id, !u.ativo)}
                         style={{
                           padding: '3px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
                           background: u.ativo !== false ? '#fee2e2' : '#dcfce7',

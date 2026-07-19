@@ -1,4 +1,7 @@
-# PRD — SIGWEB Tupanciretã
+# PRD SIGWEB Tupanciretã
+
+> **Nota de Arquitetura (Julho/2026):** Este projeto migrou integralmente do Google Cloud Platform (GCP) e Firebase para **Supabase (Self-Hosted)** e infraestrutura própria gerenciada via **Dokploy**. Todas as menções a Firebase Auth, Firebase Storage, FCM, Firebase Hosting e Cloud Run neste documento devem ser interpretadas como as respectivas contrapartes no ecossistema Supabase/Dokploy.
+
 ## Product Requirements Document v2.0
 > Baseado no Pregão Eletrônico nº 28/2026, Processo 903/2026
 > Contratante: Município de Tupanciretã – RS

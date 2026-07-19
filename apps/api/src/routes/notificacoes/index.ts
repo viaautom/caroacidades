@@ -28,7 +28,7 @@ export async function notificacoesRoutes(app: FastifyInstance) {
       `SELECT n.id, n.tipo, n.titulo, n.conteudo, n.referencia_id, n.lida, n.created_at
        FROM sigweb.notificacoes n
        JOIN sigweb.usuarios u ON u.id = n.usuario_id
-       WHERE u.firebase_uid = $1 ${where}
+       WHERE u.auth_uid = $1 ${where}
        ORDER BY n.created_at DESC
        LIMIT 50`,
       [request.user.uid]
@@ -36,7 +36,7 @@ export async function notificacoesRoutes(app: FastifyInstance) {
     const [{ count }] = await query<{ count: string }>(
       `SELECT COUNT(*) FROM sigweb.notificacoes n
        JOIN sigweb.usuarios u ON u.id = n.usuario_id
-       WHERE u.firebase_uid = $1 AND n.lida = false`,
+       WHERE u.auth_uid = $1 AND n.lida = false`,
       [request.user.uid]
     )
     return { data: rows, naoLidas: Number(count) }
@@ -48,7 +48,7 @@ export async function notificacoesRoutes(app: FastifyInstance) {
     await query(
       `UPDATE sigweb.notificacoes n SET lida = true
        FROM sigweb.usuarios u
-       WHERE n.usuario_id = u.id AND n.id = $1 AND u.firebase_uid = $2`,
+       WHERE n.usuario_id = u.id AND n.id = $1 AND u.auth_uid = $2`,
       [id, request.user.uid]
     )
     return { ok: true }
@@ -59,7 +59,7 @@ export async function notificacoesRoutes(app: FastifyInstance) {
     await query(
       `UPDATE sigweb.notificacoes n SET lida = true
        FROM sigweb.usuarios u
-       WHERE n.usuario_id = u.id AND u.firebase_uid = $1 AND n.lida = false`,
+       WHERE n.usuario_id = u.id AND u.auth_uid = $1 AND n.lida = false`,
       [request.user.uid]
     )
     return { ok: true }
