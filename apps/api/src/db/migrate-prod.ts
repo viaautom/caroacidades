@@ -39,6 +39,16 @@ async function run() {
   await client.connect()
   console.log('✓ Conectado ao banco de dados')
 
+  // O Postgres do Supabase instala uuid-ossp/pgcrypto/etc no schema
+  // "extensions" (não em public) — sem ele no search_path, funções como
+  // uuid_generate_v4() somem assim que uma migration troca o search_path.
+  // Persistimos no banco (ALTER DATABASE) pra toda conexão futura da API
+  // também herdar isso, e aplicamos na sessão atual pro restante do run.
+  await client.query(
+    `ALTER DATABASE ${client.database} SET search_path TO "$user", public, extensions, sigweb`
+  )
+  await client.query(`SET search_path TO sigweb, public, extensions`)
+
   // Criar tabela de controle
   await client.query(`
     CREATE TABLE IF NOT EXISTS public.schema_migrations (
