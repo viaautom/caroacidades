@@ -58,5 +58,4 @@ networks:
   default:
   supabase_network:
     external: true
-    # O Dokploy geralmente nomeia a rede do Compose como <nome-do-compose>_default
-    name: supabase_default
+    name: caroacidades-supabase-lsmnc9_default
