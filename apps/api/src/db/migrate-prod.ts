@@ -50,13 +50,17 @@ async function run() {
   // Detectar migrações já aplicadas pelo conteúdo do banco
   console.log('\n📋 Verificando estado atual do banco...')
   for (const [version, checkSql] of Object.entries(MIGRATION_MARKERS)) {
-    const { rows } = await client.query(checkSql)
-    if (rows.length > 0) {
-      await client.query(
-        `INSERT INTO public.schema_migrations (version) VALUES ($1) ON CONFLICT DO NOTHING`,
-        [version]
-      )
-      console.log(`  ✓ ${version} (já existia)`)
+    try {
+      const { rows } = await client.query(checkSql)
+      if (rows.length > 0) {
+        await client.query(
+          `INSERT INTO public.schema_migrations (version) VALUES ($1) ON CONFLICT DO NOTHING`,
+          [version]
+        )
+        console.log(`  ✓ ${version} (já existia)`)
+      }
+    } catch {
+      // Tabela/schema referenciado pelo marcador ainda não existe — banco novo, nada a detectar.
     }
   }
 
