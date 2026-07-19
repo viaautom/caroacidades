@@ -13,5 +13,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/node_modules ./node_modules
 COPY --from=builder /app/apps/api/package.json ./
 COPY --from=builder /app/shapefiles/bairros_tupariceta.geojson ./bairros_tupariceta.geojson
+COPY --from=builder /app/database/migrations ./database/migrations
 EXPOSE 3001
 CMD ["node", "dist/server.js"]

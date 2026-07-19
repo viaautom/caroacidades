@@ -7,11 +7,11 @@ import { Client } from 'pg'
 import fs from 'fs'
 import path from 'path'
 
-const MIGRATIONS_DIR = path.resolve(__dirname, '../../../../database/migrations')
+const MIGRATIONS_DIR = path.resolve(__dirname, '../../database/migrations')
 
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis: 10_000,
 })
 
@@ -144,7 +144,7 @@ async function run() {
   const { rows: bairrosExistentes } = await client.query('SELECT COUNT(*) FROM sigweb.bairros')
   if (Number(bairrosExistentes[0].count) === 0) {
     console.log('\n🗺  Sem bairros — verificando seed...')
-    const seedPath = path.resolve(__dirname, '../../../../bairros_tupariceta.geojson')
+    const seedPath = path.resolve(__dirname, '../../bairros_tupariceta.geojson')
     if (fs.existsSync(seedPath)) {
       const geojson = JSON.parse(fs.readFileSync(seedPath, 'utf8'))
       let inserted = 0
