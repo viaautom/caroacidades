@@ -3,7 +3,7 @@ version: '3.9'
 services:
   # 1. Servidor de mapas (MVT) lendo do PostGIS do Supabase
   pg_tileserv:
-    image: ghcr.io/crunchydata/pg_tileserv:latest
+    image: pramsey/pg_tileserv:latest
     container_name: sigweb-tileserv
     environment:
       # Conecta no db do compose do supabase usando o hostname da rede compartilhada
