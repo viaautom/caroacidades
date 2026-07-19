@@ -7,13 +7,10 @@ services:
     container_name: sigweb-tileserv
     environment:
       # Conecta no db do compose do supabase usando o hostname da rede compartilhada
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
     ports:
       - '7800:7800'
     restart: unless-stopped
-    networks:
-      - default
-      - caroacidades-supabase-lsmnc9_default
 
   # 2. Backend (API Fastify)
   api:
@@ -25,7 +22,7 @@ services:
       NODE_ENV: production
       PORT: 3001
       LOG_LEVEL: '${LOG_LEVEL:-info}'
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
       CORS_ORIGIN: '${CORS_ORIGIN:-*}'
       SOCIAL_ENC_KEY: '${SOCIAL_ENC_KEY}'
       SUPABASE_URL: '${SUPABASE_URL}'
@@ -35,9 +32,6 @@ services:
     ports:
       - '3001:3001'
     restart: unless-stopped
-    networks:
-      - default
-      - caroacidades-supabase-lsmnc9_default
 
   # 3. Frontend (React/Vite servido via Nginx)
   web:
@@ -53,8 +47,3 @@ services:
     ports:
       - '8080:8080'
     restart: unless-stopped
-
-networks:
-  default:
-  caroacidades-supabase-lsmnc9_default:
-    external: true
