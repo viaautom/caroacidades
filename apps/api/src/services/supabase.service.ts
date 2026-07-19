@@ -69,7 +69,7 @@ export async function sendExpoPushNotification(
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ to: expoPushToken, title, body, data }),
     })
-    const result = await response.json()
+    const result = (await response.json()) as any
     
     // O Expo retorna 200 OK mesmo quando o push falha logicamente (ex: token inválido)
     // O array data contém o detalhe do envio.
