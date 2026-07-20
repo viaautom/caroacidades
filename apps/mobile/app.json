@@ -50,8 +50,8 @@
       ]
     ],
     "extra": {
-      "apiUrl": "https://sigweb-api-dev-357570346826.us-east1.run.app",
-      "supabaseUrl": "https://troque-pela-url-do-projeto-supabase",
+      "apiUrl": "https://api.caroacidades.viaautom.com.br",
+      "supabaseUrl": "https://supabase.caroacidades.viaautom.com.br",
       "supabaseAnonKey": "troque-pela-anon-key-do-projeto",
       "supabaseStorageBucket": "sigweb"
     }
