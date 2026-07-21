@@ -120,6 +120,7 @@ async function bootstrap() {
       user_metadata: { nome: body.data.nome },
     })
     if (error || !data.user) {
+      console.error('[AUTO-CADASTRO] Supabase Auth Error:', error)
       const mensagem = error?.code === 'email_exists'
         ? 'Este e-mail já está cadastrado'
         : 'Não foi possível criar a conta'
