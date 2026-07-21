@@ -11,6 +11,8 @@ services:
     ports:
       - '7800:7800'
     restart: unless-stopped
+    networks:
+      - dokploy-network
 
   # 2. Backend (API Fastify)
   api:
@@ -32,6 +34,8 @@ services:
     ports:
       - '3001:3001'
     restart: unless-stopped
+    networks:
+      - dokploy-network
 
   # 3. Frontend (React/Vite servido via Nginx)
   web:
@@ -48,3 +52,5 @@ services:
     ports:
       - '8080:8080'
     restart: unless-stopped
+    networks:
+      - dokploy-network
