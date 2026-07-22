@@ -48,6 +48,7 @@ services:
         VITE_SUPABASE_STORAGE_BUCKET: 'sigweb'
         VITE_PG_TILESERV_URL: '${VITE_PG_TILESERV_URL}'
         VITE_API_URL: '${VITE_API_URL}'
+        VITE_DEV_PASSWORD: 'C@roa43v1'
     container_name: sigweb-web
     ports:
       - '8080:8080'
