@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 CREATE INDEX IF NOT EXISTS idx_usuarios_auth_uid ON usuarios (auth_uid);
 CREATE INDEX IF NOT EXISTS idx_usuarios_email        ON usuarios (email);
 
-CREATE TRIGGER trg_usuarios_updated_at
+CREATE OR REPLACE TRIGGER trg_usuarios_updated_at
   BEFORE UPDATE ON usuarios
   FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
@@ -159,11 +159,11 @@ CREATE INDEX IF NOT EXISTS idx_parcelas_bairro      ON parcelas (bairro_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_logradouro  ON parcelas (logradouro_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_quadra      ON parcelas (quadra_id);
 
-CREATE TRIGGER trg_parcelas_updated_at
+CREATE OR REPLACE TRIGGER trg_parcelas_updated_at
   BEFORE UPDATE ON parcelas
   FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
-CREATE TRIGGER trg_parcelas_historico
+CREATE OR REPLACE TRIGGER trg_parcelas_historico
   AFTER UPDATE ON parcelas
   FOR EACH ROW EXECUTE FUNCTION sigweb.log_geometry_change();
 
@@ -187,11 +187,11 @@ CREATE TABLE IF NOT EXISTS edificacoes (
 CREATE INDEX IF NOT EXISTS idx_edificacoes_geom     ON edificacoes USING GIST (geometry);
 CREATE INDEX IF NOT EXISTS idx_edificacoes_parcela  ON edificacoes (parcela_id);
 
-CREATE TRIGGER trg_edificacoes_updated_at
+CREATE OR REPLACE TRIGGER trg_edificacoes_updated_at
   BEFORE UPDATE ON edificacoes
   FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
-CREATE TRIGGER trg_edificacoes_historico
+CREATE OR REPLACE TRIGGER trg_edificacoes_historico
   AFTER UPDATE ON edificacoes
   FOR EACH ROW EXECUTE FUNCTION sigweb.log_geometry_change();
 
@@ -252,12 +252,12 @@ CREATE TABLE IF NOT EXISTS patrimonios (
 CREATE INDEX IF NOT EXISTS idx_patrimonios_geom ON patrimonios USING GIST (geometry);
 
 -- Triggers para tabelas auxiliares
-CREATE TRIGGER trg_pessoas_updated_at BEFORE UPDATE ON pessoas FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
-CREATE TRIGGER trg_bairros_updated_at BEFORE UPDATE ON bairros FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
-CREATE TRIGGER trg_logradouros_updated_at BEFORE UPDATE ON logradouros FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
-CREATE TRIGGER trg_loteamentos_updated_at BEFORE UPDATE ON loteamentos FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
-CREATE TRIGGER trg_quadras_updated_at BEFORE UPDATE ON quadras FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
-CREATE TRIGGER trg_patrimonios_updated_at BEFORE UPDATE ON patrimonios FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_pessoas_updated_at BEFORE UPDATE ON pessoas FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_bairros_updated_at BEFORE UPDATE ON bairros FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_logradouros_updated_at BEFORE UPDATE ON logradouros FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_loteamentos_updated_at BEFORE UPDATE ON loteamentos FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_quadras_updated_at BEFORE UPDATE ON quadras FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_patrimonios_updated_at BEFORE UPDATE ON patrimonios FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 
 -- V004__iluminacao_arborizacao.sql
@@ -283,7 +283,7 @@ CREATE INDEX IF NOT EXISTS idx_postes_geom       ON postes USING GIST (geometry)
 CREATE INDEX IF NOT EXISTS idx_postes_logradouro ON postes (logradouro_id);
 CREATE INDEX IF NOT EXISTS idx_postes_situacao   ON postes (situacao);
 
-CREATE TRIGGER trg_postes_updated_at BEFORE UPDATE ON postes FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_postes_updated_at BEFORE UPDATE ON postes FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 -- Equipes de manutenção
 CREATE TABLE IF NOT EXISTS equipes_manutencao (
@@ -320,7 +320,7 @@ CREATE TABLE IF NOT EXISTS ordens_servico_ip (
 CREATE INDEX IF NOT EXISTS idx_os_ip_poste   ON ordens_servico_ip (poste_id);
 CREATE INDEX IF NOT EXISTS idx_os_ip_situacao ON ordens_servico_ip (situacao);
 
-CREATE TRIGGER trg_os_ip_updated_at BEFORE UPDATE ON ordens_servico_ip FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_os_ip_updated_at BEFORE UPDATE ON ordens_servico_ip FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 -- Estoque de materiais (iluminação)
 CREATE TABLE IF NOT EXISTS locais_estoque (
@@ -380,7 +380,7 @@ CREATE TABLE IF NOT EXISTS arvores (
 CREATE INDEX IF NOT EXISTS idx_arvores_geom       ON arvores USING GIST (geometry);
 CREATE INDEX IF NOT EXISTS idx_arvores_logradouro ON arvores (logradouro_id);
 
-CREATE TRIGGER trg_arvores_updated_at BEFORE UPDATE ON arvores FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_arvores_updated_at BEFORE UPDATE ON arvores FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 -- Ordens de Serviço — Arborização
 CREATE TABLE IF NOT EXISTS ordens_servico_arb (
@@ -591,7 +591,7 @@ CREATE INDEX IF NOT EXISTS idx_processos_situacao  ON processos (situacao);
 CREATE INDEX IF NOT EXISTS idx_processos_parcela   ON processos (parcela_id);
 CREATE INDEX IF NOT EXISTS idx_processos_analista  ON processos (analista_id);
 
-CREATE TRIGGER trg_processos_updated_at BEFORE UPDATE ON processos FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_processos_updated_at BEFORE UPDATE ON processos FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 -- Gerador de código sequencial por tipo de processo
 CREATE SEQUENCE seq_aprovacao_projeto START 1;
@@ -668,7 +668,7 @@ CREATE TABLE IF NOT EXISTS solicitacoes_chamado (
 CREATE INDEX IF NOT EXISTS idx_solicitacoes_categoria ON solicitacoes_chamado (categoria_id);
 CREATE INDEX IF NOT EXISTS idx_solicitacoes_situacao  ON solicitacoes_chamado (situacao);
 
-CREATE TRIGGER trg_solicitacoes_updated_at BEFORE UPDATE ON solicitacoes_chamado FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_solicitacoes_updated_at BEFORE UPDATE ON solicitacoes_chamado FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 
 -- V008__cadastro_social.sql
@@ -693,7 +693,7 @@ CREATE TABLE IF NOT EXISTS familias (
 CREATE INDEX IF NOT EXISTS idx_familias_edificacao ON familias (edificacao_id);
 CREATE INDEX IF NOT EXISTS idx_familias_situacao   ON familias (situacao_cadastral);
 
-CREATE TRIGGER trg_familias_updated_at BEFORE UPDATE ON familias FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
+CREATE OR REPLACE TRIGGER trg_familias_updated_at BEFORE UPDATE ON familias FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 -- Pessoas do cadastro social (com dados sensíveis criptografados)
 -- CPF, NIS, PIS são armazenados como bytea criptografados com pgcrypto AES-256
