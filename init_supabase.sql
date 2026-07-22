@@ -41,7 +41,7 @@ SET search_path TO sigweb, public;
 
 CREATE TABLE IF NOT EXISTS usuarios (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  firebase_uid    VARCHAR(128) UNIQUE NOT NULL,
+  auth_uid        VARCHAR(128) UNIQUE NOT NULL,
   email           VARCHAR(255) NOT NULL,
   celular         VARCHAR(20),
   nome            VARCHAR(255),
@@ -52,8 +52,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_usuarios_firebase_uid ON usuarios (firebase_uid);
-CREATE INDEX idx_usuarios_email        ON usuarios (email);
+CREATE INDEX IF NOT EXISTS idx_usuarios_auth_uid ON usuarios (auth_uid);
+CREATE INDEX IF NOT EXISTS idx_usuarios_email        ON usuarios (email);
 
 CREATE TRIGGER trg_usuarios_updated_at
   BEFORE UPDATE ON usuarios
@@ -78,8 +78,8 @@ CREATE TABLE IF NOT EXISTS pessoas (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_pessoas_cpf_cnpj ON pessoas (cpf_cnpj);
-CREATE INDEX idx_pessoas_nome      ON pessoas USING GIN (nome gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_pessoas_cpf_cnpj ON pessoas (cpf_cnpj);
+CREATE INDEX IF NOT EXISTS idx_pessoas_nome      ON pessoas USING GIN (nome gin_trgm_ops);
 
 -- Bairros
 CREATE TABLE IF NOT EXISTS bairros (
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS bairros (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_bairros_geom ON bairros USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_bairros_geom ON bairros USING GIST (geometry);
 
 -- Logradouros
 CREATE TABLE IF NOT EXISTS logradouros (
@@ -106,9 +106,9 @@ CREATE TABLE IF NOT EXISTS logradouros (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_logradouros_geom    ON logradouros USING GIST (geometry);
-CREATE INDEX idx_logradouros_nome    ON logradouros USING GIN (nome gin_trgm_ops);
-CREATE INDEX idx_logradouros_bairro  ON logradouros (bairro_id);
+CREATE INDEX IF NOT EXISTS idx_logradouros_geom    ON logradouros USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_logradouros_nome    ON logradouros USING GIN (nome gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_logradouros_bairro  ON logradouros (bairro_id);
 
 -- Loteamentos
 CREATE TABLE IF NOT EXISTS loteamentos (
@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS loteamentos (
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_loteamentos_geom ON loteamentos USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_loteamentos_geom ON loteamentos USING GIST (geometry);
 
 -- Quadras
 CREATE TABLE IF NOT EXISTS quadras (
@@ -133,8 +133,8 @@ CREATE TABLE IF NOT EXISTS quadras (
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_quadras_geom        ON quadras USING GIST (geometry);
-CREATE INDEX idx_quadras_loteamento  ON quadras (loteamento_id);
+CREATE INDEX IF NOT EXISTS idx_quadras_geom        ON quadras USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_quadras_loteamento  ON quadras (loteamento_id);
 
 -- Parcelas (lotes)
 CREATE TABLE IF NOT EXISTS parcelas (
@@ -154,10 +154,10 @@ CREATE TABLE IF NOT EXISTS parcelas (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_parcelas_geom        ON parcelas USING GIST (geometry);
-CREATE INDEX idx_parcelas_bairro      ON parcelas (bairro_id);
-CREATE INDEX idx_parcelas_logradouro  ON parcelas (logradouro_id);
-CREATE INDEX idx_parcelas_quadra      ON parcelas (quadra_id);
+CREATE INDEX IF NOT EXISTS idx_parcelas_geom        ON parcelas USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_parcelas_bairro      ON parcelas (bairro_id);
+CREATE INDEX IF NOT EXISTS idx_parcelas_logradouro  ON parcelas (logradouro_id);
+CREATE INDEX IF NOT EXISTS idx_parcelas_quadra      ON parcelas (quadra_id);
 
 CREATE TRIGGER trg_parcelas_updated_at
   BEFORE UPDATE ON parcelas
@@ -184,8 +184,8 @@ CREATE TABLE IF NOT EXISTS edificacoes (
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_edificacoes_geom     ON edificacoes USING GIST (geometry);
-CREATE INDEX idx_edificacoes_parcela  ON edificacoes (parcela_id);
+CREATE INDEX IF NOT EXISTS idx_edificacoes_geom     ON edificacoes USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_edificacoes_parcela  ON edificacoes (parcela_id);
 
 CREATE TRIGGER trg_edificacoes_updated_at
   BEFORE UPDATE ON edificacoes
@@ -208,8 +208,8 @@ CREATE TABLE IF NOT EXISTS historico_cartografico (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_historico_entidade ON historico_cartografico (entidade, entidade_id);
-CREATE INDEX idx_historico_data     ON historico_cartografico (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_historico_entidade ON historico_cartografico (entidade, entidade_id);
+CREATE INDEX IF NOT EXISTS idx_historico_data     ON historico_cartografico (created_at DESC);
 
 -- BICs (Boletins de Informação Cadastral) — coletados no app de recadastramento
 CREATE TABLE IF NOT EXISTS bics (
@@ -234,8 +234,8 @@ CREATE TABLE IF NOT EXISTS bics (
   created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_bics_parcela ON bics (parcela_id);
-CREATE INDEX idx_bics_situacao ON bics (situacao_recadastramento);
+CREATE INDEX IF NOT EXISTS idx_bics_parcela ON bics (parcela_id);
+CREATE INDEX IF NOT EXISTS idx_bics_situacao ON bics (situacao_recadastramento);
 
 -- Patrimônio público imobiliário
 CREATE TABLE IF NOT EXISTS patrimonios (
@@ -249,7 +249,7 @@ CREATE TABLE IF NOT EXISTS patrimonios (
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_patrimonios_geom ON patrimonios USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_patrimonios_geom ON patrimonios USING GIST (geometry);
 
 -- Triggers para tabelas auxiliares
 CREATE TRIGGER trg_pessoas_updated_at BEFORE UPDATE ON pessoas FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
@@ -279,9 +279,9 @@ CREATE TABLE IF NOT EXISTS postes (
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_postes_geom       ON postes USING GIST (geometry);
-CREATE INDEX idx_postes_logradouro ON postes (logradouro_id);
-CREATE INDEX idx_postes_situacao   ON postes (situacao);
+CREATE INDEX IF NOT EXISTS idx_postes_geom       ON postes USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_postes_logradouro ON postes (logradouro_id);
+CREATE INDEX IF NOT EXISTS idx_postes_situacao   ON postes (situacao);
 
 CREATE TRIGGER trg_postes_updated_at BEFORE UPDATE ON postes FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
@@ -317,8 +317,8 @@ CREATE TABLE IF NOT EXISTS ordens_servico_ip (
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_os_ip_poste   ON ordens_servico_ip (poste_id);
-CREATE INDEX idx_os_ip_situacao ON ordens_servico_ip (situacao);
+CREATE INDEX IF NOT EXISTS idx_os_ip_poste   ON ordens_servico_ip (poste_id);
+CREATE INDEX IF NOT EXISTS idx_os_ip_situacao ON ordens_servico_ip (situacao);
 
 CREATE TRIGGER trg_os_ip_updated_at BEFORE UPDATE ON ordens_servico_ip FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
@@ -377,8 +377,8 @@ CREATE TABLE IF NOT EXISTS arvores (
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_arvores_geom       ON arvores USING GIST (geometry);
-CREATE INDEX idx_arvores_logradouro ON arvores (logradouro_id);
+CREATE INDEX IF NOT EXISTS idx_arvores_geom       ON arvores USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_arvores_logradouro ON arvores (logradouro_id);
 
 CREATE TRIGGER trg_arvores_updated_at BEFORE UPDATE ON arvores FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
@@ -398,8 +398,8 @@ CREATE TABLE IF NOT EXISTS ordens_servico_arb (
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_os_arb_arvore   ON ordens_servico_arb (arvore_id);
-CREATE INDEX idx_os_arb_situacao ON ordens_servico_arb (situacao);
+CREATE INDEX IF NOT EXISTS idx_os_arb_arvore   ON ordens_servico_arb (arvore_id);
+CREATE INDEX IF NOT EXISTS idx_os_arb_situacao ON ordens_servico_arb (situacao);
 
 -- Sepulturas (cemitérios)
 CREATE TABLE IF NOT EXISTS sepulturas (
@@ -418,7 +418,7 @@ CREATE TABLE IF NOT EXISTS sepulturas (
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_sepulturas_geom ON sepulturas USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_sepulturas_geom ON sepulturas USING GIST (geometry);
 
 
 -- V005__viabilidade_plano_diretor.sql
@@ -444,7 +444,7 @@ CREATE TABLE IF NOT EXISTS zonas_uso (
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_zonas_uso_geom ON zonas_uso USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_zonas_uso_geom ON zonas_uso USING GIST (geometry);
 
 -- Tabela de CNAEs permitidos por zona
 CREATE TABLE IF NOT EXISTS cnae_zona (
@@ -455,8 +455,8 @@ CREATE TABLE IF NOT EXISTS cnae_zona (
   permitido    BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE INDEX idx_cnae_zona_zona   ON cnae_zona (zona_id);
-CREATE INDEX idx_cnae_zona_cnae   ON cnae_zona (cnae_codigo);
+CREATE INDEX IF NOT EXISTS idx_cnae_zona_zona   ON cnae_zona (zona_id);
+CREATE INDEX IF NOT EXISTS idx_cnae_zona_cnae   ON cnae_zona (cnae_codigo);
 
 -- Consultas de viabilidade emitidas
 CREATE TABLE IF NOT EXISTS consultas_viabilidade (
@@ -477,9 +477,9 @@ CREATE TABLE IF NOT EXISTS consultas_viabilidade (
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_viabilidade_parcela    ON consultas_viabilidade (parcela_id);
-CREATE INDEX idx_viabilidade_codigo     ON consultas_viabilidade (codigo_verificacao);
-CREATE INDEX idx_viabilidade_created_at ON consultas_viabilidade (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_viabilidade_parcela    ON consultas_viabilidade (parcela_id);
+CREATE INDEX IF NOT EXISTS idx_viabilidade_codigo     ON consultas_viabilidade (codigo_verificacao);
+CREATE INDEX IF NOT EXISTS idx_viabilidade_created_at ON consultas_viabilidade (created_at DESC);
 
 -- Faces de quadra (para numeração predial e PGV)
 CREATE TABLE IF NOT EXISTS faces_quadra (
@@ -495,9 +495,9 @@ CREATE TABLE IF NOT EXISTS faces_quadra (
   geometry         GEOMETRY(LINESTRING, 31982)
 );
 
-CREATE INDEX idx_faces_quadra_geom      ON faces_quadra USING GIST (geometry);
-CREATE INDEX idx_faces_quadra_quadra    ON faces_quadra (quadra_id);
-CREATE INDEX idx_faces_quadra_logradouro ON faces_quadra (logradouro_id);
+CREATE INDEX IF NOT EXISTS idx_faces_quadra_geom      ON faces_quadra USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_faces_quadra_quadra    ON faces_quadra (quadra_id);
+CREATE INDEX IF NOT EXISTS idx_faces_quadra_logradouro ON faces_quadra (logradouro_id);
 
 
 -- V006__pgv.sql
@@ -515,7 +515,7 @@ CREATE TABLE IF NOT EXISTS setores_pgv (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_setores_pgv_geom ON setores_pgv USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_setores_pgv_geom ON setores_pgv USING GIST (geometry);
 
 -- Atualizar FK em faces_quadra
 ALTER TABLE faces_quadra
@@ -530,7 +530,7 @@ CREATE TABLE IF NOT EXISTS polos_pgv (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_polos_pgv_geom ON polos_pgv USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_polos_pgv_geom ON polos_pgv USING GIST (geometry);
 
 -- Amostras de mercado (pontos de coleta de preço)
 CREATE TABLE IF NOT EXISTS amostras_pgv (
@@ -547,8 +547,8 @@ CREATE TABLE IF NOT EXISTS amostras_pgv (
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_amostras_pgv_geom  ON amostras_pgv USING GIST (geometry);
-CREATE INDEX idx_amostras_pgv_setor ON amostras_pgv (setor_id);
+CREATE INDEX IF NOT EXISTS idx_amostras_pgv_geom  ON amostras_pgv USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_amostras_pgv_setor ON amostras_pgv (setor_id);
 
 -- Simulações de IPTU
 CREATE TABLE IF NOT EXISTS simulacoes_iptu (
@@ -585,11 +585,11 @@ CREATE TABLE IF NOT EXISTS processos (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_processos_codigo    ON processos (codigo);
-CREATE INDEX idx_processos_tipo      ON processos (tipo);
-CREATE INDEX idx_processos_situacao  ON processos (situacao);
-CREATE INDEX idx_processos_parcela   ON processos (parcela_id);
-CREATE INDEX idx_processos_analista  ON processos (analista_id);
+CREATE INDEX IF NOT EXISTS idx_processos_codigo    ON processos (codigo);
+CREATE INDEX IF NOT EXISTS idx_processos_tipo      ON processos (tipo);
+CREATE INDEX IF NOT EXISTS idx_processos_situacao  ON processos (situacao);
+CREATE INDEX IF NOT EXISTS idx_processos_parcela   ON processos (parcela_id);
+CREATE INDEX IF NOT EXISTS idx_processos_analista  ON processos (analista_id);
 
 CREATE TRIGGER trg_processos_updated_at BEFORE UPDATE ON processos FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
@@ -612,7 +612,7 @@ CREATE TABLE IF NOT EXISTS etapas_processo (
   concluida_em TIMESTAMPTZ
 );
 
-CREATE INDEX idx_etapas_processo ON etapas_processo (processo_id, ordem);
+CREATE INDEX IF NOT EXISTS idx_etapas_processo ON etapas_processo (processo_id, ordem);
 
 -- Anexos de processos (armazenados no Firebase Storage)
 CREATE TABLE IF NOT EXISTS anexos_processo (
@@ -627,7 +627,7 @@ CREATE TABLE IF NOT EXISTS anexos_processo (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_anexos_processo ON anexos_processo (processo_id);
+CREATE INDEX IF NOT EXISTS idx_anexos_processo ON anexos_processo (processo_id);
 
 -- Fluxos BPMN (REURB — configuráveis por setor)
 CREATE TABLE IF NOT EXISTS fluxos_bpmn (
@@ -665,8 +665,8 @@ CREATE TABLE IF NOT EXISTS solicitacoes_chamado (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_solicitacoes_categoria ON solicitacoes_chamado (categoria_id);
-CREATE INDEX idx_solicitacoes_situacao  ON solicitacoes_chamado (situacao);
+CREATE INDEX IF NOT EXISTS idx_solicitacoes_categoria ON solicitacoes_chamado (categoria_id);
+CREATE INDEX IF NOT EXISTS idx_solicitacoes_situacao  ON solicitacoes_chamado (situacao);
 
 CREATE TRIGGER trg_solicitacoes_updated_at BEFORE UPDATE ON solicitacoes_chamado FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
@@ -690,8 +690,8 @@ CREATE TABLE IF NOT EXISTS familias (
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_familias_edificacao ON familias (edificacao_id);
-CREATE INDEX idx_familias_situacao   ON familias (situacao_cadastral);
+CREATE INDEX IF NOT EXISTS idx_familias_edificacao ON familias (edificacao_id);
+CREATE INDEX IF NOT EXISTS idx_familias_situacao   ON familias (situacao_cadastral);
 
 CREATE TRIGGER trg_familias_updated_at BEFORE UPDATE ON familias FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
@@ -713,7 +713,7 @@ CREATE TABLE IF NOT EXISTS pessoas_social (
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_pessoas_social_familia ON pessoas_social (familia_id);
+CREATE INDEX IF NOT EXISTS idx_pessoas_social_familia ON pessoas_social (familia_id);
 
 CREATE TABLE IF NOT EXISTS tipos_renda (
   id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -871,7 +871,7 @@ CREATE TABLE IF NOT EXISTS fases_bpmn (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_fases_bpmn_fluxo ON fases_bpmn (fluxo_id, ordem);
+CREATE INDEX IF NOT EXISTS idx_fases_bpmn_fluxo ON fases_bpmn (fluxo_id, ordem);
 
 -- Associa fluxo BPMN e fase atual ao processo genérico (tabela processos de V007)
 ALTER TABLE processos
@@ -891,7 +891,7 @@ CREATE TABLE IF NOT EXISTS historico_fases_processo (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_historico_fases_processo ON historico_fases_processo (processo_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_historico_fases_processo ON historico_fases_processo (processo_id, created_at DESC);
 
 
 -- V012__patrimonio_cemiterio.sql
@@ -1216,7 +1216,7 @@ CROSS JOIN (VALUES
 -- V019: Migração de Firebase Auth/Storage para Supabase Auth/Storage
 SET search_path TO sigweb, public;
 
--- firebase_uid passa a guardar o auth.users.id (UUID) emitido pelo GoTrue
+-- auth_uid passa a guardar o auth.users.id (UUID) emitido pelo GoTrue
 -- do Supabase — coluna mantida (já era uma indireção, não o identificador
 -- exposto), apenas troca o que ela referencia.
 
@@ -1239,7 +1239,7 @@ DECLARE
 BEGIN
   SELECT perfil INTO usuario_perfil
   FROM sigweb.usuarios
-  WHERE firebase_uid = (event->>'user_id');
+  WHERE auth_uid = (event->>'user_id');
 
   claims := COALESCE(event->'claims', '{}'::jsonb);
   claims := jsonb_set(claims, '{perfil}', to_jsonb(COALESCE(usuario_perfil, 'CIDADAO')));
@@ -1259,10 +1259,6 @@ GRANT SELECT ON sigweb.usuarios TO supabase_auth_admin;
 -- V020__rename_firebase_uid.sql
 -- V020: Limpeza residual do Firebase e renomeação para auth_uid
 SET search_path TO sigweb, public;
-
--- Renomeia a coluna legada de ID do usuário
-ALTER TABLE usuarios RENAME COLUMN firebase_uid TO auth_uid;
-ALTER INDEX idx_usuarios_firebase_uid RENAME TO idx_usuarios_auth_uid;
 
 -- Recria a função de hook do Supabase para usar a nova coluna
 CREATE OR REPLACE FUNCTION public.custom_access_token_hook(event jsonb)
