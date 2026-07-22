@@ -4,6 +4,18 @@ import { query } from '../../db/pool'
 import { authMiddleware } from '../../middleware/auth.middleware'
 import { requireRole } from '../../middleware/rbac.middleware'
 
+export const MIGRATION_CONFIGURACOES = `
+  CREATE TABLE IF NOT EXISTS sigweb.configuracoes (
+    chave VARCHAR(255) PRIMARY KEY,
+    valor JSONB NOT NULL,
+    atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  );
+
+  INSERT INTO sigweb.configuracoes (chave, valor)
+  VALUES ('MAPA_INITIAL_VIEW', '{"center": [-29.0803, -53.8389], "zoom": 15}'::jsonb)
+  ON CONFLICT (chave) DO NOTHING;
+`;
+
 export async function configuracoesRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authMiddleware)
   

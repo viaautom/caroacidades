@@ -34,7 +34,7 @@ import { usuariosRoutes } from './routes/cadastro/usuarios'
 import { permissoesRoutes, MIGRATION_PERMISSOES } from './routes/admin/permissoes'
 import { sinterRoutes } from './routes/admin/sinter'
 import { devRoutes } from './routes/admin/dev'
-import { configuracoesRoutes } from './routes/admin/configuracoes'
+import { configuracoesRoutes, MIGRATION_CONFIGURACOES } from './routes/admin/configuracoes'
 
 const app = Fastify({
   logger: {
@@ -265,7 +265,10 @@ async function bootstrap() {
     app.log.warn({ err }, 'Migration social_catalogos skipped')
   )
   dbQuery(MIGRATION_PGV_DEMO).catch(err =>
-    app.log.warn({ err }, 'Migration pgv_demo skipped')
+    console.error('Erro na migração MIGRATION_PGV_DEMO:', err)
+  )
+  dbQuery(MIGRATION_CONFIGURACOES).catch(err =>
+    console.error('Erro na migração MIGRATION_CONFIGURACOES:', err)
   )
 }
 
