@@ -285,10 +285,10 @@ export function MainLayout() {
       {painelAberto && (
         <>
           <div onClick={() => setPainelAberto(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 400 }} />
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
           <div style={{
             position: 'fixed', top: 0, right: 0, bottom: 0,
-            width: 'min(960px, 90vw)', background: '#f9fafb', zIndex: 500,
+            width: 'min(960px, 90vw)', background: '#f9fafb', zIndex: 9999,
             boxShadow: '-8px 0 32px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column',
           }}>
             <div style={{
