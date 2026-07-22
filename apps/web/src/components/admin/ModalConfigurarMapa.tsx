@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import L from 'leaflet'
 import toast from 'react-hot-toast'
-import api from '../../../lib/api'
-import { useMapStore } from '../../../store/map.store'
+import api from '../../lib/api'
+import { useMapStore } from '../../store/map.store'
 import 'leaflet/dist/leaflet.css'
 
 type ModalConfigurarMapaProps = {
