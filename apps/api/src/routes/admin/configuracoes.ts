@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { query } from '../../db'
-import { requireRole } from '../../plugins/auth'
+import { query } from '../../db/pool'
+import { requireRole } from '../../middleware/rbac.middleware'
 
 export async function configuracoesRoutes(app: FastifyInstance) {
   // Public (or authenticated) route to fetch a specific configuration
