@@ -14,8 +14,8 @@ export const STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET ?? 's
 // do Firebase, lido da mesma forma pelo backend em verifySupabaseToken().
 export function decodePerfil(accessToken: string): UserRole {
   try {
-    const payload = jwtDecode<{ perfil?: UserRole }>(accessToken)
-    return payload.perfil ?? 'CIDADAO'
+    const payload = jwtDecode<{ perfil?: UserRole, app_metadata?: { perfil?: UserRole } }>(accessToken)
+    return payload.perfil ?? payload.app_metadata?.perfil ?? 'CIDADAO'
   } catch {
     return 'CIDADAO'
   }
