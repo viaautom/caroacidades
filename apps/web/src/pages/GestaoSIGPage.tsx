@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usePermissionsStore, MODULOS, type PerfilKey } from '../store/permissions.store'
 import { useMapStore } from '../store/map.store'
+import { ModalConfigurarMapa } from '../components/admin/ModalConfigurarMapa'
 import * as XLSX from 'xlsx'
 import shpjs from 'shpjs'
 import api from '../lib/api'
@@ -1692,6 +1693,7 @@ function TabDesenvolvedor({ onLock }: { onLock: () => void }) {
   const [pinging, setPinging] = useState(false)
   const [pingError, setPingError] = useState<string | null>(null)
   const [showWipeModal, setShowWipeModal] = useState(false)
+  const [showConfigMapa, setShowConfigMapa] = useState(false)
 
   const testConnection = async () => {
     setPinging(true)
@@ -1848,22 +1850,37 @@ function TabDesenvolvedor({ onLock }: { onLock: () => void }) {
           <div>
             <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: '#1e3a5f', fontWeight: 600 }}>Mapa</h3>
             <p style={{ margin: '0 0 16px 0', fontSize: 12, color: '#6b7280' }}>
-              Volta o mapa para a visão inicial do sistema, que destaca o município de Tupanciretã.
+              Configuração da visão inicial e recentralização do mapa.
             </p>
           </div>
-          <button
-            onClick={() => { navigate('/mapa'); recentralizar() }}
-            style={{
-              ...btn('#1e3a5f'),
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            🎯 Recentralizar Mapa
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button
+              onClick={() => { navigate('/mapa'); recentralizar() }}
+              style={{
+                ...btn('#1e3a5f'),
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              🎯 Recentralizar
+            </button>
+            <button
+              onClick={() => setShowConfigMapa(true)}
+              style={{
+                ...outlineBtn(),
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              ⚙️ Configurar Visão
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1962,6 +1979,7 @@ function TabDesenvolvedor({ onLock }: { onLock: () => void }) {
       )}
 
       {showWipeModal && <WipeDbModal onClose={() => setShowWipeModal(false)} />}
+      {showConfigMapa && <ModalConfigurarMapa onClose={() => setShowConfigMapa(false)} />}
 
       {/* Ação para bloqueio */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

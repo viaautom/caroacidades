@@ -34,6 +34,7 @@ import { usuariosRoutes } from './routes/cadastro/usuarios'
 import { permissoesRoutes, MIGRATION_PERMISSOES } from './routes/admin/permissoes'
 import { sinterRoutes } from './routes/admin/sinter'
 import { devRoutes } from './routes/admin/dev'
+import { configuracoesRoutes } from './routes/admin/configuracoes'
 
 const app = Fastify({
   logger: {
@@ -96,6 +97,7 @@ async function bootstrap() {
   await app.register(permissoesRoutes,  { prefix })
   await app.register(sinterRoutes,      { prefix })
   await app.register(devRoutes,         { prefix })
+  await app.register(configuracoesRoutes, { prefix: `${prefix}/admin/configuracoes` })
 
   // Auto-cadastro de cidadão (req 11): qualquer pessoa pode criar sua própria
   // conta com perfil CIDADAO — sem depender de um ADMIN para provisioná-la.

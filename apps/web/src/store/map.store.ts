@@ -11,9 +11,7 @@ export type BairroInfo = {
 
 export type PendingTarget = { lat: number; lng: number; zoom?: number }
 
-// Centro/zoom padrão ao iniciar o sistema — destaca o município de Tupanciretã
-export const MUNICIPIO_CENTER: [number, number] = [-29.0803, -53.8389]
-export const MUNICIPIO_ZOOM = 15
+// Removidas as constantes hardcoded para puxar da API dinamicamente
 
 type MapState = {
   map: LeafletMap | null
@@ -30,6 +28,9 @@ type MapState = {
   arvoresRefreshKey: number
   pendingTarget: PendingTarget | null
   lastDrawnGeometry: GeoJSON.Geometry | null
+  initialCenter: [number, number]
+  initialZoom: number
+  setInitialView: (center: [number, number], zoom: number) => void
   setMap: (map: LeafletMap | null) => void
   setBaseLayer: (baseLayer: BaseLayerId) => void
   selectParcela: (id: string | null) => void
@@ -65,6 +66,9 @@ export const useMapStore = create<MapState>((set, get) => ({
   arvoresRefreshKey: 0,
   pendingTarget: null,
   lastDrawnGeometry: null,
+  initialCenter: [-29.0803, -53.8389],
+  initialZoom: 15,
+  setInitialView: (center, zoom) => set({ initialCenter: center, initialZoom: zoom }),
   setMap: (map) => set({ map }),
   setBaseLayer: (baseLayer) => set({ baseLayer }),
   selectParcela: (id) => set({ selectedParcelaId: id }),
@@ -93,9 +97,9 @@ export const useMapStore = create<MapState>((set, get) => ({
   setPendingTarget: (target) => set({ pendingTarget: target }),
   // req: botão "Recentralizar Mapa" — volta à visão inicial que destaca o município
   recentralizar: () => {
-    const { map, flyTo } = get()
-    if (map) flyTo(MUNICIPIO_CENTER[0], MUNICIPIO_CENTER[1], MUNICIPIO_ZOOM)
-    else set({ pendingTarget: { lat: MUNICIPIO_CENTER[0], lng: MUNICIPIO_CENTER[1], zoom: MUNICIPIO_ZOOM } })
+    const { map, flyTo, initialCenter, initialZoom } = get()
+    if (map) flyTo(initialCenter[0], initialCenter[1], initialZoom)
+    else set({ pendingTarget: { lat: initialCenter[0], lng: initialCenter[1], zoom: initialZoom } })
   },
   setBairros: (bairros) => set({ bairros }),
   zoomToBairro: (bounds) => {

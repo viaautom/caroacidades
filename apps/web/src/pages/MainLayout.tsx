@@ -8,6 +8,7 @@ import { usePermissionsStore, type PerfilKey } from '../store/permissions.store'
 import { GestaoSIGPage } from './GestaoSIGPage'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
+import { useMapStore } from '../store/map.store'
 
 const NAV_ITEMS = [
   { path: '/mapa',       label: 'Mapa',                  moduloId: 'mapa' },
@@ -140,6 +141,18 @@ export function MainLayout() {
   const isMobile = useIsMobile()
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768)
   const [painelAberto, setPainelAberto] = useState(false)
+
+  // Fetch initial map center/zoom on mount
+  useEffect(() => {
+    api.get('/admin/configuracoes/MAPA_INITIAL_VIEW')
+      .then(res => {
+        const { center, zoom } = res.data.valor
+        if (center && zoom) {
+          useMapStore.getState().setInitialView(center, zoom)
+        }
+      })
+      .catch(err => console.error('Erro ao buscar configuração inicial do mapa:', err))
+  }, [])
 
   // Carrega permissões customizadas do banco uma vez
   useEffect(() => {

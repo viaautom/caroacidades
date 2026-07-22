@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { useMapStore, BaseLayerId, MUNICIPIO_CENTER, MUNICIPIO_ZOOM } from '../../store/map.store'
+import { useMapStore, BaseLayerId } from '../../store/map.store'
 import { MVTLayer } from './MVTLayer'
 import { EditToolbar } from './EditToolbar'
 import { LayerControl } from './LayerControl'
@@ -49,7 +49,7 @@ export function SIGMap({ compact = false }: { compact?: boolean } = {}) {
   useEffect(() => {
     if (!containerRef.current || map) return
     const instance = L.map(containerRef.current, {
-      center: MUNICIPIO_CENTER, zoom: MUNICIPIO_ZOOM,
+      center: useMapStore.getState().initialCenter, zoom: useMapStore.getState().initialZoom,
       zoomControl: true, attributionControl: true,
     })
     setMap(instance)
