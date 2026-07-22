@@ -1,9 +1,12 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { query } from '../../db/pool'
+import { authMiddleware } from '../../middleware/auth.middleware'
 import { requireRole } from '../../middleware/rbac.middleware'
 
 export async function configuracoesRoutes(app: FastifyInstance) {
+  app.addHook('preHandler', authMiddleware)
+  
   // Public (or authenticated) route to fetch a specific configuration
   app.get('/:chave', async (request, reply) => {
     const { chave } = z.object({ chave: z.string() }).parse(request.params)
