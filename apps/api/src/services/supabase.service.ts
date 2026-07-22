@@ -22,11 +22,11 @@ export interface DecodedSupabaseToken {
 // `perfil` chega no claim porque o Custom Access Token Hook (ver V019__supabase_auth.sql)
 // injeta o valor de sigweb.usuarios.perfil no token a cada login.
 export function verifySupabaseToken(token: string): DecodedSupabaseToken {
-  const decoded = jwt.verify(token, SUPABASE_JWT_SECRET, { algorithms: ['HS256'] }) as jwt.JwtPayload & { perfil?: string }
+  const decoded = jwt.verify(token, SUPABASE_JWT_SECRET, { algorithms: ['HS256'] }) as jwt.JwtPayload & { perfil?: string, app_metadata?: { perfil?: string } }
   return {
     uid: decoded.sub ?? '',
     email: decoded.email ?? '',
-    perfil: (decoded.perfil as UserRole) ?? 'CIDADAO',
+    perfil: (decoded.perfil as UserRole) ?? (decoded.app_metadata?.perfil as UserRole) ?? 'CIDADAO',
   }
 }
 
