@@ -975,7 +975,7 @@ CREATE TABLE IF NOT EXISTS envios_sinter (
   status          VARCHAR(30) NOT NULL DEFAULT 'preparando'
                     CHECK (status IN ('preparando','validando','enviado','aceito','rejeitado','erro')),
   qtd_parcelas    INT NOT NULL DEFAULT 0,
-  arquivo_gcs     TEXT,       -- path no Cloud Storage
+  arquivo_storage TEXT,       -- path no Supabase Storage
   erros           JSONB NOT NULL DEFAULT '[]',
   resposta_rfb    TEXT,       -- retorno literal do SINTER
   enviado_em      TIMESTAMPTZ,
@@ -1226,7 +1226,7 @@ SET search_path TO sigweb, public;
 
 -- Renomeia colunas cujo nome remetia diretamente a Firebase/GCP
 ALTER TABLE usuarios       ADD COLUMN IF NOT EXISTS expo_push_token VARCHAR(255);
-ALTER TABLE envios_sinter  RENAME COLUMN arquivo_gcs TO arquivo_storage;
+
 
 -- Custom Access Token Hook: GoTrue chama esta função a cada emissão/refresh
 -- de token e injeta o retorno como claims do JWT. Substitui o antigo
