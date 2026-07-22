@@ -39,7 +39,7 @@ $$ LANGUAGE plpgsql;
 -- V002: Usuários e controle de acesso
 SET search_path TO sigweb, public;
 
-CREATE TABLE usuarios (
+CREATE TABLE IF NOT EXISTS usuarios (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   firebase_uid    VARCHAR(128) UNIQUE NOT NULL,
   email           VARCHAR(255) NOT NULL,
@@ -66,7 +66,7 @@ CREATE TRIGGER trg_usuarios_updated_at
 SET search_path TO sigweb, public;
 
 -- Pessoas (proprietários, requerentes)
-CREATE TABLE pessoas (
+CREATE TABLE IF NOT EXISTS pessoas (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome        VARCHAR(255) NOT NULL,
   cpf_cnpj    VARCHAR(18),
@@ -82,7 +82,7 @@ CREATE INDEX idx_pessoas_cpf_cnpj ON pessoas (cpf_cnpj);
 CREATE INDEX idx_pessoas_nome      ON pessoas USING GIN (nome gin_trgm_ops);
 
 -- Bairros
-CREATE TABLE bairros (
+CREATE TABLE IF NOT EXISTS bairros (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome        VARCHAR(150) NOT NULL,
   codigo      VARCHAR(20) UNIQUE NOT NULL,
@@ -94,7 +94,7 @@ CREATE TABLE bairros (
 CREATE INDEX idx_bairros_geom ON bairros USING GIST (geometry);
 
 -- Logradouros
-CREATE TABLE logradouros (
+CREATE TABLE IF NOT EXISTS logradouros (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome        VARCHAR(200) NOT NULL,
   tipo        VARCHAR(50) NOT NULL DEFAULT 'Rua',
@@ -111,7 +111,7 @@ CREATE INDEX idx_logradouros_nome    ON logradouros USING GIN (nome gin_trgm_ops
 CREATE INDEX idx_logradouros_bairro  ON logradouros (bairro_id);
 
 -- Loteamentos
-CREATE TABLE loteamentos (
+CREATE TABLE IF NOT EXISTS loteamentos (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome             VARCHAR(200) NOT NULL,
   decreto          VARCHAR(50),
@@ -124,7 +124,7 @@ CREATE TABLE loteamentos (
 CREATE INDEX idx_loteamentos_geom ON loteamentos USING GIST (geometry);
 
 -- Quadras
-CREATE TABLE quadras (
+CREATE TABLE IF NOT EXISTS quadras (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo         VARCHAR(20) NOT NULL,
   loteamento_id  UUID REFERENCES loteamentos(id),
@@ -137,7 +137,7 @@ CREATE INDEX idx_quadras_geom        ON quadras USING GIST (geometry);
 CREATE INDEX idx_quadras_loteamento  ON quadras (loteamento_id);
 
 -- Parcelas (lotes)
-CREATE TABLE parcelas (
+CREATE TABLE IF NOT EXISTS parcelas (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo              VARCHAR(30),
   area_m2             FLOAT,
@@ -168,7 +168,7 @@ CREATE TRIGGER trg_parcelas_historico
   FOR EACH ROW EXECUTE FUNCTION sigweb.log_geometry_change();
 
 -- Edificações (unidades imobiliárias)
-CREATE TABLE edificacoes (
+CREATE TABLE IF NOT EXISTS edificacoes (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   inscricao_imobiliaria VARCHAR(30) UNIQUE,
   cadastro_imobiliario  VARCHAR(30),
@@ -196,7 +196,7 @@ CREATE TRIGGER trg_edificacoes_historico
   FOR EACH ROW EXECUTE FUNCTION sigweb.log_geometry_change();
 
 -- Histórico de alterações cartográficas
-CREATE TABLE historico_cartografico (
+CREATE TABLE IF NOT EXISTS historico_cartografico (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   entidade        VARCHAR(50) NOT NULL,
   entidade_id     UUID NOT NULL,
@@ -212,7 +212,7 @@ CREATE INDEX idx_historico_entidade ON historico_cartografico (entidade, entidad
 CREATE INDEX idx_historico_data     ON historico_cartografico (created_at DESC);
 
 -- BICs (Boletins de Informação Cadastral) — coletados no app de recadastramento
-CREATE TABLE bics (
+CREATE TABLE IF NOT EXISTS bics (
   id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parcela_id               UUID NOT NULL REFERENCES parcelas(id),
   edificacao_id            UUID REFERENCES edificacoes(id),
@@ -238,7 +238,7 @@ CREATE INDEX idx_bics_parcela ON bics (parcela_id);
 CREATE INDEX idx_bics_situacao ON bics (situacao_recadastramento);
 
 -- Patrimônio público imobiliário
-CREATE TABLE patrimonios (
+CREATE TABLE IF NOT EXISTS patrimonios (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome         VARCHAR(200) NOT NULL,
   finalidade   VARCHAR(100),
@@ -265,7 +265,7 @@ CREATE TRIGGER trg_patrimonios_updated_at BEFORE UPDATE ON patrimonios FOR EACH 
 SET search_path TO sigweb, public;
 
 -- Postes
-CREATE TABLE postes (
+CREATE TABLE IF NOT EXISTS postes (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo         VARCHAR(30) UNIQUE,
   logradouro_id  UUID REFERENCES logradouros(id),
@@ -286,7 +286,7 @@ CREATE INDEX idx_postes_situacao   ON postes (situacao);
 CREATE TRIGGER trg_postes_updated_at BEFORE UPDATE ON postes FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 -- Equipes de manutenção
-CREATE TABLE equipes_manutencao (
+CREATE TABLE IF NOT EXISTS equipes_manutencao (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome       VARCHAR(100) NOT NULL,
   responsavel VARCHAR(100),
@@ -295,14 +295,14 @@ CREATE TABLE equipes_manutencao (
 );
 
 -- Tipos de defeito para iluminação
-CREATE TABLE tipos_defeito (
+CREATE TABLE IF NOT EXISTS tipos_defeito (
   id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome      VARCHAR(100) NOT NULL,
   descricao TEXT
 );
 
 -- Ordens de Serviço — Iluminação Pública
-CREATE TABLE ordens_servico_ip (
+CREATE TABLE IF NOT EXISTS ordens_servico_ip (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   poste_id     UUID NOT NULL REFERENCES postes(id),
   tipo_defeito_id UUID REFERENCES tipos_defeito(id),
@@ -323,20 +323,20 @@ CREATE INDEX idx_os_ip_situacao ON ordens_servico_ip (situacao);
 CREATE TRIGGER trg_os_ip_updated_at BEFORE UPDATE ON ordens_servico_ip FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 -- Estoque de materiais (iluminação)
-CREATE TABLE locais_estoque (
+CREATE TABLE IF NOT EXISTS locais_estoque (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome       VARCHAR(100) NOT NULL,
   descricao  TEXT
 );
 
-CREATE TABLE produtos (
+CREATE TABLE IF NOT EXISTS produtos (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome       VARCHAR(200) NOT NULL,
   unidade    VARCHAR(20) NOT NULL DEFAULT 'un',
   descricao  TEXT
 );
 
-CREATE TABLE estoque (
+CREATE TABLE IF NOT EXISTS estoque (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   produto_id      UUID NOT NULL REFERENCES produtos(id),
   local_id        UUID NOT NULL REFERENCES locais_estoque(id),
@@ -348,7 +348,7 @@ CREATE TABLE estoque (
   UNIQUE (produto_id, local_id, lote_serie)
 );
 
-CREATE TABLE movimentacoes_estoque (
+CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   estoque_id   UUID NOT NULL REFERENCES estoque(id),
   tipo         VARCHAR(20) NOT NULL CHECK (tipo IN ('entrada','saida','transferencia')),
@@ -361,7 +361,7 @@ CREATE TABLE movimentacoes_estoque (
 );
 
 -- Árvores
-CREATE TABLE arvores (
+CREATE TABLE IF NOT EXISTS arvores (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo                SERIAL UNIQUE,
   logradouro_id         UUID REFERENCES logradouros(id),
@@ -383,7 +383,7 @@ CREATE INDEX idx_arvores_logradouro ON arvores (logradouro_id);
 CREATE TRIGGER trg_arvores_updated_at BEFORE UPDATE ON arvores FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 -- Ordens de Serviço — Arborização
-CREATE TABLE ordens_servico_arb (
+CREATE TABLE IF NOT EXISTS ordens_servico_arb (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   arvore_id    UUID NOT NULL REFERENCES arvores(id),
   tipo         VARCHAR(100) NOT NULL,
@@ -402,7 +402,7 @@ CREATE INDEX idx_os_arb_arvore   ON ordens_servico_arb (arvore_id);
 CREATE INDEX idx_os_arb_situacao ON ordens_servico_arb (situacao);
 
 -- Sepulturas (cemitérios)
-CREATE TABLE sepulturas (
+CREATE TABLE IF NOT EXISTS sepulturas (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo       VARCHAR(30) UNIQUE,
   titular      VARCHAR(255),
@@ -426,7 +426,7 @@ CREATE INDEX idx_sepulturas_geom ON sepulturas USING GIST (geometry);
 SET search_path TO sigweb, public;
 
 -- Zonas de uso do solo (Plano Diretor)
-CREATE TABLE zonas_uso (
+CREATE TABLE IF NOT EXISTS zonas_uso (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome                  VARCHAR(100) NOT NULL,
   sigla                 VARCHAR(20) NOT NULL,
@@ -447,7 +447,7 @@ CREATE TABLE zonas_uso (
 CREATE INDEX idx_zonas_uso_geom ON zonas_uso USING GIST (geometry);
 
 -- Tabela de CNAEs permitidos por zona
-CREATE TABLE cnae_zona (
+CREATE TABLE IF NOT EXISTS cnae_zona (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   zona_id      UUID NOT NULL REFERENCES zonas_uso(id) ON DELETE CASCADE,
   cnae_codigo  VARCHAR(10) NOT NULL,
@@ -459,7 +459,7 @@ CREATE INDEX idx_cnae_zona_zona   ON cnae_zona (zona_id);
 CREATE INDEX idx_cnae_zona_cnae   ON cnae_zona (cnae_codigo);
 
 -- Consultas de viabilidade emitidas
-CREATE TABLE consultas_viabilidade (
+CREATE TABLE IF NOT EXISTS consultas_viabilidade (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo_verificacao  UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
   parcela_id          UUID NOT NULL REFERENCES parcelas(id),
@@ -482,7 +482,7 @@ CREATE INDEX idx_viabilidade_codigo     ON consultas_viabilidade (codigo_verific
 CREATE INDEX idx_viabilidade_created_at ON consultas_viabilidade (created_at DESC);
 
 -- Faces de quadra (para numeração predial e PGV)
-CREATE TABLE faces_quadra (
+CREATE TABLE IF NOT EXISTS faces_quadra (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   quadra_id        UUID REFERENCES quadras(id),
   logradouro_id    UUID REFERENCES logradouros(id),
@@ -505,7 +505,7 @@ CREATE INDEX idx_faces_quadra_logradouro ON faces_quadra (logradouro_id);
 SET search_path TO sigweb, public;
 
 -- Setores de cálculo PGV
-CREATE TABLE setores_pgv (
+CREATE TABLE IF NOT EXISTS setores_pgv (
   id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome      VARCHAR(100) NOT NULL,
   equacao   TEXT,
@@ -522,7 +522,7 @@ ALTER TABLE faces_quadra
   ADD CONSTRAINT fk_faces_setor_pgv FOREIGN KEY (setor_pgv_id) REFERENCES setores_pgv(id);
 
 -- Polos valorizantes
-CREATE TABLE polos_pgv (
+CREATE TABLE IF NOT EXISTS polos_pgv (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome       VARCHAR(150) NOT NULL,
   tipo       VARCHAR(50),
@@ -533,7 +533,7 @@ CREATE TABLE polos_pgv (
 CREATE INDEX idx_polos_pgv_geom ON polos_pgv USING GIST (geometry);
 
 -- Amostras de mercado (pontos de coleta de preço)
-CREATE TABLE amostras_pgv (
+CREATE TABLE IF NOT EXISTS amostras_pgv (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   setor_id            UUID REFERENCES setores_pgv(id),
   valor_amostra       FLOAT NOT NULL,
@@ -551,7 +551,7 @@ CREATE INDEX idx_amostras_pgv_geom  ON amostras_pgv USING GIST (geometry);
 CREATE INDEX idx_amostras_pgv_setor ON amostras_pgv (setor_id);
 
 -- Simulações de IPTU
-CREATE TABLE simulacoes_iptu (
+CREATE TABLE IF NOT EXISTS simulacoes_iptu (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   descricao             VARCHAR(200) NOT NULL,
   aliquota_residencial  FLOAT NOT NULL,
@@ -569,7 +569,7 @@ CREATE TABLE simulacoes_iptu (
 SET search_path TO sigweb, public;
 
 -- Processos
-CREATE TABLE processos (
+CREATE TABLE IF NOT EXISTS processos (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo        VARCHAR(30) UNIQUE NOT NULL,
   tipo          VARCHAR(20) NOT NULL CHECK (tipo IN ('aprovacao_projeto','habite_se','reurb')),
@@ -599,7 +599,7 @@ CREATE SEQUENCE seq_habite_se         START 1;
 CREATE SEQUENCE seq_reurb             START 1;
 
 -- Etapas do processo
-CREATE TABLE etapas_processo (
+CREATE TABLE IF NOT EXISTS etapas_processo (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   processo_id  UUID NOT NULL REFERENCES processos(id) ON DELETE CASCADE,
   nome         VARCHAR(100) NOT NULL,
@@ -615,7 +615,7 @@ CREATE TABLE etapas_processo (
 CREATE INDEX idx_etapas_processo ON etapas_processo (processo_id, ordem);
 
 -- Anexos de processos (armazenados no Firebase Storage)
-CREATE TABLE anexos_processo (
+CREATE TABLE IF NOT EXISTS anexos_processo (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   processo_id     UUID NOT NULL REFERENCES processos(id) ON DELETE CASCADE,
   nome            VARCHAR(255) NOT NULL,
@@ -630,7 +630,7 @@ CREATE TABLE anexos_processo (
 CREATE INDEX idx_anexos_processo ON anexos_processo (processo_id);
 
 -- Fluxos BPMN (REURB — configuráveis por setor)
-CREATE TABLE fluxos_bpmn (
+CREATE TABLE IF NOT EXISTS fluxos_bpmn (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome        VARCHAR(150) NOT NULL,
   tipo        VARCHAR(30) NOT NULL DEFAULT 'reurb',
@@ -641,7 +641,7 @@ CREATE TABLE fluxos_bpmn (
 );
 
 -- App de Chamados — categorias e solicitações
-CREATE TABLE categorias_chamado (
+CREATE TABLE IF NOT EXISTS categorias_chamado (
   id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome      VARCHAR(100) NOT NULL,
   descricao TEXT,
@@ -649,7 +649,7 @@ CREATE TABLE categorias_chamado (
   ativa     BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE solicitacoes_chamado (
+CREATE TABLE IF NOT EXISTS solicitacoes_chamado (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   categoria_id  UUID NOT NULL REFERENCES categorias_chamado(id),
   descricao     TEXT NOT NULL,
@@ -676,7 +676,7 @@ CREATE TRIGGER trg_solicitacoes_updated_at BEFORE UPDATE ON solicitacoes_chamado
 -- CPF, NIS, PIS armazenados criptografados via pgcrypto
 SET search_path TO sigweb, public;
 
-CREATE TABLE familias (
+CREATE TABLE IF NOT EXISTS familias (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo                VARCHAR(20) UNIQUE NOT NULL,
   edificacao_id         UUID REFERENCES edificacoes(id),
@@ -697,7 +697,7 @@ CREATE TRIGGER trg_familias_updated_at BEFORE UPDATE ON familias FOR EACH ROW EX
 
 -- Pessoas do cadastro social (com dados sensíveis criptografados)
 -- CPF, NIS, PIS são armazenados como bytea criptografados com pgcrypto AES-256
-CREATE TABLE pessoas_social (
+CREATE TABLE IF NOT EXISTS pessoas_social (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   familia_id       UUID REFERENCES familias(id) ON DELETE CASCADE,
   nome             VARCHAR(255) NOT NULL,
@@ -715,12 +715,12 @@ CREATE TABLE pessoas_social (
 
 CREATE INDEX idx_pessoas_social_familia ON pessoas_social (familia_id);
 
-CREATE TABLE tipos_renda (
+CREATE TABLE IF NOT EXISTS tipos_renda (
   id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome  VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE rendas (
+CREATE TABLE IF NOT EXISTS rendas (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   pessoa_id       UUID NOT NULL REFERENCES pessoas_social(id) ON DELETE CASCADE,
   tipo_renda_id   UUID REFERENCES tipos_renda(id),
@@ -728,7 +728,7 @@ CREATE TABLE rendas (
   compoe_renda    BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE informacoes_sociais (
+CREATE TABLE IF NOT EXISTS informacoes_sociais (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   familia_id UUID NOT NULL REFERENCES familias(id) ON DELETE CASCADE,
   tipo       VARCHAR(100) NOT NULL,
@@ -813,7 +813,7 @@ ALTER TABLE parcelas
   ADD COLUMN IF NOT EXISTS numero_predial_principal VARCHAR(20);
 
 -- Operações de numeração realizadas por logradouro
-CREATE TABLE numeracao_predial (
+CREATE TABLE IF NOT EXISTS numeracao_predial (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   logradouro_id       UUID NOT NULL REFERENCES logradouros(id),
   numero_inicio_par   INT NOT NULL DEFAULT 2,
@@ -827,7 +827,7 @@ CREATE TABLE numeracao_predial (
 CREATE INDEX IF NOT EXISTS idx_numeracao_predial_logradouro ON numeracao_predial (logradouro_id);
 
 -- Divergências detectadas entre número atual e gerado
-CREATE TABLE divergencias_numeracao (
+CREATE TABLE IF NOT EXISTS divergencias_numeracao (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   edificacao_id   UUID NOT NULL REFERENCES edificacoes(id) ON DELETE CASCADE,
   logradouro_id   UUID REFERENCES logradouros(id),
@@ -846,7 +846,7 @@ CREATE INDEX IF NOT EXISTS idx_divergencias_resolvida   ON divergencias_numeraca
 SET search_path TO sigweb, public;
 
 -- Definições de fluxo BPMN por setor/departamento
-CREATE TABLE IF NOT EXISTS fluxos_bpmn (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS fluxos_bpmn (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome        VARCHAR(150) NOT NULL,
   setor       VARCHAR(100),
@@ -858,7 +858,7 @@ CREATE TABLE IF NOT EXISTS fluxos_bpmn (
 );
 
 -- Fases dentro de cada fluxo
-CREATE TABLE IF NOT EXISTS fases_bpmn (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS fases_bpmn (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   fluxo_id        UUID NOT NULL REFERENCES fluxos_bpmn(id) ON DELETE CASCADE,
   nome            VARCHAR(150) NOT NULL,
@@ -879,7 +879,7 @@ ALTER TABLE processos
   ADD COLUMN IF NOT EXISTS fase_atual_id  UUID REFERENCES fases_bpmn(id);
 
 -- Histórico de movimentações de fases
-CREATE TABLE IF NOT EXISTS historico_fases_processo (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS historico_fases_processo (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   processo_id     UUID NOT NULL REFERENCES processos(id) ON DELETE CASCADE,
   fase_id         UUID REFERENCES fases_bpmn(id),
@@ -899,7 +899,7 @@ CREATE INDEX idx_historico_fases_processo ON historico_fases_processo (processo_
 SET search_path TO sigweb, public;
 
 -- Bens públicos com geometria variável (ponto, polígono, linha)
-CREATE TABLE IF NOT EXISTS patrimonios (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS patrimonios (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome             VARCHAR(250) NOT NULL,
   finalidade       VARCHAR(100) NOT NULL,  -- escola, hospital, praca, predio_publico, etc.
@@ -920,7 +920,7 @@ CREATE OR REPLACE TRIGGER trg_patrimonios_updated_at
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- Cemitérios (perímetros)
-CREATE TABLE IF NOT EXISTS cemiterios (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS cemiterios (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome        VARCHAR(150) NOT NULL,
   geometry    GEOMETRY(POLYGON, 31982),
@@ -931,7 +931,7 @@ CREATE INDEX IF NOT EXISTS idx_cemiterios_geom ON cemiterios USING GIST (geometr
 
 -- Sepulturas georreferenciadas
 DROP TABLE IF EXISTS sepulturas CASCADE;
-CREATE TABLE IF NOT EXISTS sepulturas (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS sepulturas (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cemiterio_id        UUID REFERENCES cemiterios(id),
   codigo              VARCHAR(30) UNIQUE NOT NULL,
@@ -963,7 +963,7 @@ CREATE OR REPLACE TRIGGER trg_sepulturas_updated_at
 SET search_path TO sigweb, public;
 
 -- Lotes de envio ao SINTER
-CREATE TABLE IF NOT EXISTS envios_sinter (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS envios_sinter (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   numero_envio    INT GENERATED ALWAYS AS IDENTITY,
   tipo            VARCHAR(20) NOT NULL DEFAULT 'incremental'
@@ -983,7 +983,7 @@ CREATE TABLE IF NOT EXISTS envios_sinter (
 CREATE INDEX IF NOT EXISTS idx_envios_sinter_status ON envios_sinter (status);
 
 -- Status individual por parcela no SINTER
-CREATE TABLE IF NOT EXISTS parcelas_sinter (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS parcelas_sinter (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parcela_id  UUID NOT NULL REFERENCES parcelas(id) ON DELETE CASCADE,
   envio_id    UUID REFERENCES envios_sinter(id),
@@ -1005,7 +1005,7 @@ CREATE INDEX IF NOT EXISTS idx_parcelas_sinter_envio          ON parcelas_sinter
 SET search_path TO sigweb, public;
 
 -- Tabela de auditoria centralizada
-CREATE TABLE IF NOT EXISTS audit_log (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS audit_log (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tabela       VARCHAR(100) NOT NULL,
   operacao     VARCHAR(10)  NOT NULL CHECK (operacao IN ('INSERT','UPDATE','DELETE')),
@@ -1290,7 +1290,7 @@ $$;
 -- =======================================================================================
 -- MIGRATION: V020 - Configuracoes Globais
 -- =======================================================================================
-CREATE TABLE IF NOT EXISTS configuracoes (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS configuracoes (
   chave VARCHAR(255) PRIMARY KEY,
   valor JSONB NOT NULL,
   atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
