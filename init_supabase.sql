@@ -846,7 +846,7 @@ CREATE INDEX IF NOT EXISTS idx_divergencias_resolvida   ON divergencias_numeraca
 SET search_path TO sigweb, public;
 
 -- Definições de fluxo BPMN por setor/departamento
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS fluxos_bpmn (
+CREATE TABLE IF NOT EXISTS fluxos_bpmn (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome        VARCHAR(150) NOT NULL,
   setor       VARCHAR(100),
@@ -858,7 +858,7 @@ CREATE TABLE IF NOT EXISTS IF NOT EXISTS fluxos_bpmn (
 );
 
 -- Fases dentro de cada fluxo
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS fases_bpmn (
+CREATE TABLE IF NOT EXISTS fases_bpmn (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   fluxo_id        UUID NOT NULL REFERENCES fluxos_bpmn(id) ON DELETE CASCADE,
   nome            VARCHAR(150) NOT NULL,
@@ -879,7 +879,7 @@ ALTER TABLE processos
   ADD COLUMN IF NOT EXISTS fase_atual_id  UUID REFERENCES fases_bpmn(id);
 
 -- Histórico de movimentações de fases
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS historico_fases_processo (
+CREATE TABLE IF NOT EXISTS historico_fases_processo (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   processo_id     UUID NOT NULL REFERENCES processos(id) ON DELETE CASCADE,
   fase_id         UUID REFERENCES fases_bpmn(id),
@@ -899,7 +899,7 @@ CREATE INDEX idx_historico_fases_processo ON historico_fases_processo (processo_
 SET search_path TO sigweb, public;
 
 -- Bens públicos com geometria variável (ponto, polígono, linha)
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS patrimonios (
+CREATE TABLE IF NOT EXISTS patrimonios (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome             VARCHAR(250) NOT NULL,
   finalidade       VARCHAR(100) NOT NULL,  -- escola, hospital, praca, predio_publico, etc.
@@ -920,7 +920,7 @@ CREATE OR REPLACE TRIGGER trg_patrimonios_updated_at
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- Cemitérios (perímetros)
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS cemiterios (
+CREATE TABLE IF NOT EXISTS cemiterios (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome        VARCHAR(150) NOT NULL,
   geometry    GEOMETRY(POLYGON, 31982),
@@ -931,7 +931,7 @@ CREATE INDEX IF NOT EXISTS idx_cemiterios_geom ON cemiterios USING GIST (geometr
 
 -- Sepulturas georreferenciadas
 DROP TABLE IF EXISTS sepulturas CASCADE;
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS sepulturas (
+CREATE TABLE IF NOT EXISTS sepulturas (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cemiterio_id        UUID REFERENCES cemiterios(id),
   codigo              VARCHAR(30) UNIQUE NOT NULL,
@@ -963,7 +963,7 @@ CREATE OR REPLACE TRIGGER trg_sepulturas_updated_at
 SET search_path TO sigweb, public;
 
 -- Lotes de envio ao SINTER
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS envios_sinter (
+CREATE TABLE IF NOT EXISTS envios_sinter (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   numero_envio    INT GENERATED ALWAYS AS IDENTITY,
   tipo            VARCHAR(20) NOT NULL DEFAULT 'incremental'
@@ -983,7 +983,7 @@ CREATE TABLE IF NOT EXISTS IF NOT EXISTS envios_sinter (
 CREATE INDEX IF NOT EXISTS idx_envios_sinter_status ON envios_sinter (status);
 
 -- Status individual por parcela no SINTER
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS parcelas_sinter (
+CREATE TABLE IF NOT EXISTS parcelas_sinter (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parcela_id  UUID NOT NULL REFERENCES parcelas(id) ON DELETE CASCADE,
   envio_id    UUID REFERENCES envios_sinter(id),
@@ -1005,7 +1005,7 @@ CREATE INDEX IF NOT EXISTS idx_parcelas_sinter_envio          ON parcelas_sinter
 SET search_path TO sigweb, public;
 
 -- Tabela de auditoria centralizada
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS audit_log (
+CREATE TABLE IF NOT EXISTS audit_log (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tabela       VARCHAR(100) NOT NULL,
   operacao     VARCHAR(10)  NOT NULL CHECK (operacao IN ('INSERT','UPDATE','DELETE')),
@@ -1290,7 +1290,7 @@ $$;
 -- =======================================================================================
 -- MIGRATION: V020 - Configuracoes Globais
 -- =======================================================================================
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS configuracoes (
+CREATE TABLE IF NOT EXISTS configuracoes (
   chave VARCHAR(255) PRIMARY KEY,
   valor JSONB NOT NULL,
   atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
