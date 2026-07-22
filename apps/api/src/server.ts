@@ -270,6 +270,31 @@ async function bootstrap() {
   dbQuery(MIGRATION_CONFIGURACOES).catch(err =>
     console.error('Erro na migração MIGRATION_CONFIGURACOES:', err)
   )
+
+  // -- INJETADO PARA CORRIGIR O BANCO ANTIGO (sigweb-db) --
+  try {
+    console.log('Executando patch de correção do banco antigo...')
+    await dbQuery(`
+      SET search_path TO sigweb, public;
+      
+      CREATE TABLE IF NOT EXISTS configuracoes (
+        chave VARCHAR(100) PRIMARY KEY,
+        valor JSONB NOT NULL,
+        atualizado_em TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      ALTER TABLE parcelas
+        ADD COLUMN IF NOT EXISTS camada_id UUID,
+        ADD COLUMN IF NOT EXISTS atributos JSONB NOT NULL DEFAULT '{}';
+
+      INSERT INTO configuracoes (chave, valor)
+      VALUES ('MAPA_INITIAL_VIEW', '{"center": [-29.0803, -53.8389], "zoom": 15}'::jsonb)
+      ON CONFLICT (chave) DO NOTHING;
+    `)
+    console.log('Patch de correção executado com sucesso!')
+  } catch (err) {
+    console.error('Falha ao executar patch de correção:', err)
+  }
 }
 
 bootstrap().catch((err) => {
