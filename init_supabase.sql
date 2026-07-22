@@ -598,9 +598,9 @@ CREATE INDEX IF NOT EXISTS idx_processos_analista  ON processos (analista_id);
 CREATE OR REPLACE TRIGGER trg_processos_updated_at BEFORE UPDATE ON processos FOR EACH ROW EXECUTE FUNCTION sigweb.set_updated_at();
 
 -- Gerador de código sequencial por tipo de processo
-CREATE SEQUENCE seq_aprovacao_projeto START 1;
-CREATE SEQUENCE seq_habite_se         START 1;
-CREATE SEQUENCE seq_reurb             START 1;
+CREATE SEQUENCE IF NOT EXISTS seq_aprovacao_projeto START 1;
+CREATE SEQUENCE IF NOT EXISTS seq_habite_se         START 1;
+CREATE SEQUENCE IF NOT EXISTS seq_reurb             START 1;
 
 -- Etapas do processo
 CREATE TABLE IF NOT EXISTS etapas_processo (
