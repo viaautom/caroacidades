@@ -517,9 +517,13 @@ CREATE TABLE IF NOT EXISTS setores_pgv (
 
 CREATE INDEX IF NOT EXISTS idx_setores_pgv_geom ON setores_pgv USING GIST (geometry);
 
--- Atualizar FK em faces_quadra
-ALTER TABLE faces_quadra
-  ADD CONSTRAINT fk_faces_setor_pgv FOREIGN KEY (setor_pgv_id) REFERENCES setores_pgv(id);
+-- Atualizar FK em faces_quadra (idempotente)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_faces_setor_pgv') THEN
+    ALTER TABLE faces_quadra ADD CONSTRAINT fk_faces_setor_pgv FOREIGN KEY (setor_pgv_id) REFERENCES setores_pgv(id);
+  END IF;
+END $$;
 
 -- Polos valorizantes
 CREATE TABLE IF NOT EXISTS polos_pgv (
