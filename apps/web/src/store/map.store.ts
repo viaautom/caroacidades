@@ -61,7 +61,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   selectedPosteId: null,
   selectedArvoreId: null,
   selectedPatrimonioId: null,
-  activeLayers: ['parcelas', 'edificacoes', 'bairros'],
+  activeLayers: [],
   baseLayer: 'osm',
   bairros: [],
   layerPanelOpen: true,
