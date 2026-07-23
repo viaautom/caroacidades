@@ -35,37 +35,48 @@ export async function usuariosRoutes(app: FastifyInstance) {
 
   // Criar usuário com senha temporária e persistir no banco
   app.post('/usuarios', { preHandler: requireRole('ADMIN') }, async (request, reply) => {
-    const body = z.object({
-      email: z.string().email(),
-      nome: z.string().min(2),
-      senha: z.string().min(6),
-      perfil: perfilSchema.default('FISCAL_CAMPO'),
-    }).parse(request.body)
+    try {
+      const body = z.object({
+        email: z.string().email(),
+        nome: z.string().min(2),
+        senha: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+        perfil: perfilSchema.default('FISCAL_CAMPO'),
+      }).parse(request.body)
 
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email: body.email,
-      password: body.senha,
-      email_confirm: false,
-      user_metadata: { nome: body.nome },
-    })
-    if (error || !data.user) {
-      return reply.code(400).send({ error: 'Não foi possível criar a conta' })
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        email: body.email,
+        password: body.senha,
+        email_confirm: false,
+        user_metadata: { nome: body.nome },
+      })
+      
+      if (error || !data?.user) {
+        return reply.code(400).send({ error: error?.message || 'Não foi possível criar a conta no Auth' })
+      }
+
+      await query(
+        `INSERT INTO sigweb.usuarios (auth_uid, email, nome, perfil, ativo)
+         VALUES ($1, $2, $3, $4, true)
+         ON CONFLICT (auth_uid) DO UPDATE
+           SET email = EXCLUDED.email,
+               nome = EXCLUDED.nome,
+               perfil = EXCLUDED.perfil,
+               ativo = true,
+               updated_at = now()`,
+        [data.user.id, body.email, body.nome, body.perfil]
+      )
+
+      reply.code(201)
+      return { id: data.user.id }
+    } catch (err: any) {
+      console.error('Erro em POST /usuarios:', err)
+      // Se for erro do Zod (validação), envia as mensagens de erro
+      if (err instanceof z.ZodError) {
+        const errorMessages = err.errors.map(e => e.message).join(', ')
+        return reply.code(400).send({ error: `Dados inválidos: ${errorMessages}` })
+      }
+      return reply.code(400).send({ error: err?.message || 'Erro interno ao criar usuário' })
     }
-
-    await query(
-      `INSERT INTO sigweb.usuarios (auth_uid, email, nome, perfil, ativo)
-       VALUES ($1, $2, $3, $4, true)
-       ON CONFLICT (auth_uid) DO UPDATE
-         SET email = EXCLUDED.email,
-             nome = EXCLUDED.nome,
-             perfil = EXCLUDED.perfil,
-             ativo = true,
-             updated_at = now()`,
-      [data.user.id, body.email, body.nome, body.perfil]
-    )
-
-    reply.code(201)
-    return { id: data.user.id }
   })
 
   // Alterar perfil (fonte da verdade fica em sigweb.usuarios.perfil — o Custom
