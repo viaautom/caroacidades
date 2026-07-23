@@ -57,6 +57,12 @@ function TabCamadas() {
   const [novaDesc, setNovaDesc] = useState('')
   const [novaCor, setNovaCor] = useState(COR_PADRAO)
   const [criando, setCriando] = useState(false)
+  
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [editNome, setEditNome] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [editCor, setEditCor] = useState(COR_PADRAO)
+
   const [uploading, setUploading] = useState(false)
   const [downloading, setDownloading] = useState<string | null>(null)
   const shpInputRef = useRef<HTMLInputElement>(null)
@@ -76,6 +82,17 @@ function TabCamadas() {
     onError: () => toast.error('Erro ao criar camada'),
   })
 
+  const editar = useMutation({
+    mutationFn: (data: { id: string; nome: string; descricao: string; cor: string }) =>
+      api.patch(`/camadas/${data.id}`, { nome: data.nome, descricao: data.descricao || null, cor: data.cor }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['camadas'] })
+      setEditandoId(null)
+      toast.success('Camada atualizada!')
+    },
+    onError: () => toast.error('Erro ao atualizar camada'),
+  })
+
   const deletar = useMutation({
     mutationFn: (id: string) => api.delete(`/camadas/${id}`),
     onSuccess: () => {
@@ -88,22 +105,26 @@ function TabCamadas() {
   async function handleShpUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.name.toLowerCase().endsWith('.zip')) {
-      toast.error('Selecione um arquivo .zip contendo o shapefile')
+    const isZip = file.name.toLowerCase().endsWith('.zip')
+    const isGeojson = file.name.toLowerCase().endsWith('.geojson') || file.name.toLowerCase().endsWith('.json')
+    if (!isZip && !isGeojson) {
+      toast.error('Selecione um arquivo .zip (Shapefile) ou .geojson/.json')
       return
     }
     setUploading(true)
     try {
       const form = new FormData()
       form.append('file', file)
-      const res = await api.post('/camadas/upload-shp', form, {
-        headers: { 'x-layer-name': file.name.replace(/\.zip$/i, '').replace(/_/g, ' ') },
+      const endpoint = isGeojson ? '/camadas/upload-geojson' : '/camadas/upload-shp'
+      const baseName = file.name.replace(/\.(zip|geojson|json)$/i, '').replace(/_/g, ' ')
+      const res = await api.post(endpoint, form, {
+        headers: { 'x-layer-name': baseName },
       })
       qc.invalidateQueries({ queryKey: ['camadas'] })
       toast.success(`Camada importada: ${res.data.importadas}/${res.data.total} feições`)
       if (res.data.erros?.length) toast.error(`${res.data.erros.length} erros na importação`)
     } catch (err: any) {
-      toast.error(err.response?.data?.error ?? 'Erro ao importar shapefile')
+      toast.error(err.response?.data?.error ?? 'Erro ao importar arquivo')
     } finally {
       setUploading(false)
       if (shpInputRef.current) shpInputRef.current.value = ''
@@ -151,9 +172,9 @@ function TabCamadas() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ margin: 0, color: '#1e3a5f', fontSize: 16 }}>Camadas Vetoriais</h3>
         <div style={{ display: 'flex', gap: 8 }}>
-          <input ref={shpInputRef} type="file" accept=".zip" style={{ display: 'none' }} onChange={handleShpUpload} />
+          <input ref={shpInputRef} type="file" accept=".zip,.geojson,.json" style={{ display: 'none' }} onChange={handleShpUpload} />
           <button style={outlineBtn()} disabled={uploading} onClick={() => shpInputRef.current?.click()}>
-            {uploading ? 'Importando...' : '↑ Upload Shapefile (.zip)'}
+            {uploading ? 'Importando...' : '↑ Upload (SHP / GeoJSON)'}
           </button>
           <button style={btn()} onClick={() => setCriando(p => !p)}>+ Nova Camada</button>
         </div>
@@ -189,32 +210,73 @@ function TabCamadas() {
 
       {camadas.map(c => (
         <div key={c.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span style={{ width: 14, height: 14, borderRadius: 3, background: c.cor, flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#1e3a5f' }}>{c.nome}</div>
-            {c.descricao && <div style={{ fontSize: 12, color: '#6b7280' }}>{c.descricao}</div>}
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-              {c.total_parcelas} feições · {c.colunas?.length ?? 0} colunas extras
+          {editandoId === c.id ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Nome *</label>
+                  <input style={input} value={editNome} onChange={e => setEditNome(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Cor</label>
+                  <input type="color" value={editCor} onChange={e => setEditCor(e.target.value)}
+                    style={{ display: 'block', width: 44, height: 36, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', padding: 2 }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Descrição</label>
+                <input style={input} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button style={outlineBtn(true)} onClick={() => setEditandoId(null)}>Cancelar</button>
+                <button 
+                  style={btn(undefined, true)} 
+                  disabled={!editNome.trim() || editar.isPending} 
+                  onClick={() => editar.mutate({ id: c.id, nome: editNome, descricao: editDesc, cor: editCor })}
+                >
+                  {editar.isPending ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              style={outlineBtn(true)}
-              disabled={downloading === `geojson-${c.id}`}
-              onClick={() => downloadGeoJSON(c)}
-            >{downloading === `geojson-${c.id}` ? '...' : '↓ GeoJSON'}</button>
-            <button
-              style={outlineBtn(true)}
-              disabled={downloading === `shp-${c.id}`}
-              onClick={() => downloadSHP(c)}
-            >{downloading === `shp-${c.id}` ? '...' : '↓ SHP'}</button>
-            <button
-              style={{ ...outlineBtn(true), color: '#dc2626', borderColor: '#fca5a5' }}
-              onClick={() => {
-                if (confirm(`Remover camada "${c.nome}"? As parcelas serão desvinculadas.`)) deletar.mutate(c.id)
-              }}
-            >Remover</button>
-          </div>
+          ) : (
+            <>
+              <span style={{ width: 14, height: 14, borderRadius: 3, background: c.cor, flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e3a5f' }}>{c.nome}</div>
+                {c.descricao && <div style={{ fontSize: 12, color: '#6b7280' }}>{c.descricao}</div>}
+                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                  {c.total_parcelas} feições · {c.colunas?.length ?? 0} colunas extras
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button
+                  style={outlineBtn(true)}
+                  disabled={downloading === `geojson-${c.id}`}
+                  onClick={() => downloadGeoJSON(c)}
+                >{downloading === `geojson-${c.id}` ? '...' : '↓ GeoJSON'}</button>
+                <button
+                  style={outlineBtn(true)}
+                  disabled={downloading === `shp-${c.id}`}
+                  onClick={() => downloadSHP(c)}
+                >{downloading === `shp-${c.id}` ? '...' : '↓ SHP'}</button>
+                <button
+                  style={outlineBtn(true)}
+                  onClick={() => {
+                    setEditNome(c.nome)
+                    setEditDesc(c.descricao || '')
+                    setEditCor(c.cor)
+                    setEditandoId(c.id)
+                  }}
+                >Editar</button>
+                <button
+                  style={{ ...outlineBtn(true), color: '#dc2626', borderColor: '#fca5a5' }}
+                  onClick={() => {
+                    if (confirm(`Remover camada "${c.nome}"? As parcelas serão desvinculadas.`)) deletar.mutate(c.id)
+                  }}
+                >Remover</button>
+              </div>
+            </>
+          )}
         </div>
       ))}
 

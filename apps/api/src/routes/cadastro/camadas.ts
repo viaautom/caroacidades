@@ -264,6 +264,76 @@ export async function camadasRoutes(app: FastifyInstance) {
     return { id: camada.id, nome, total: features.length, importadas, erros }
   })
 
+  // Importar Camada (GeoJSON direto)
+  app.post('/camadas/upload-geojson', { preHandler: requireRole('ADMIN') }, async (request, reply) => {
+    const data = await request.file()
+    if (!data) return reply.code(400).send({ error: 'Nenhum arquivo enviado' })
+
+    const nome = request.headers['x-layer-name'] as string || 'Nova Camada GeoJSON'
+    const buf = await data.toBuffer()
+
+    let fc: any
+    try {
+      fc = JSON.parse(buf.toString('utf-8'))
+      if (fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
+        return reply.code(400).send({ error: 'O arquivo não é um FeatureCollection válido' })
+      }
+    } catch (err: any) {
+      return reply.code(400).send({ error: `Erro ao fazer parse do GeoJSON: ${err.message}` })
+    }
+
+    const features = fc.features
+
+    // Detecta se as coordenadas são UTM/EPSG:31982 (valores > 180) ou WGS84
+    let srcSrid = 4326
+    for (const f of features.slice(0, 5)) {
+      const coords = f.geometry?.coordinates?.flat(Infinity)
+      if (coords?.some((v: number) => Math.abs(v) > 180)) {
+        srcSrid = 31982
+        break
+      }
+    }
+
+    // Cria a camada
+    const [camada] = await query<{ id: string }>(
+      `INSERT INTO sigweb.camadas_vetoriais (nome) VALUES ($1) RETURNING id`, [nome]
+    )
+
+    let importadas = 0
+    const erros: string[] = []
+
+    for (const [idx, feat] of features.entries()) {
+      try {
+        const codigo = feat.properties?.codigo?.trim() || feat.codigo?.trim() || `IMP-${camada.id.slice(0, 6)}-${String(idx + 1).padStart(4, '0')}`
+        const atributos = feat.properties ?? {}
+        const hasGeom = feat.geometry?.coordinates
+        const geomExpr = hasGeom
+          ? srcSrid === 31982
+            ? `ST_SetSRID(ST_GeomFromGeoJSON($4), 31982)`
+            : `ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982)`
+          : 'NULL'
+        const areaExpr = hasGeom
+          ? srcSrid === 31982
+            ? `ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982))`
+            : `ST_Area(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982))`
+          : 'NULL'
+
+        const params: unknown[] = [codigo, camada.id, JSON.stringify(atributos)]
+        if (hasGeom) params.push(JSON.stringify(feat.geometry))
+
+        await query(`
+          INSERT INTO sigweb.parcelas (codigo, camada_id, atributos, geometry, area_m2)
+          VALUES ($1, $2, $3, ${geomExpr}, ${areaExpr})
+        `, params)
+        importadas++
+      } catch (err: any) {
+        erros.push(`Feição ${idx + 1}: ${err.message}`)
+      }
+    }
+
+    return { ok: true, camadaId: camada.id, total: features.length, importadas, erros }
+  })
+
   // Importar feições (GeoJSON features ou linhas de planilha) para uma camada
   app.post('/camadas/:id/importar', { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO') }, async (request, reply) => {
     const { id } = request.params as { id: string }
