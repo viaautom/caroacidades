@@ -319,7 +319,7 @@ export function CamadasPanel() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#1e3a5f' }}>Bairros de Tupanciretã</p>
                   <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>
-                    {bairros.length > 0 ? `${bairros.length} bairros · IBGE` : 'Carregando...'}
+                    {bairros.length > 0 ? `${bairros.length} bairros · IBGE` : 'Limites municipais · IBGE'}
                   </p>
                 </div>
                 <button onClick={zoomTodosBairros} title="Zoom para todos os bairros"
