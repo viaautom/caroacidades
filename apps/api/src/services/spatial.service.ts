@@ -128,6 +128,7 @@ export async function desmembrarParcela(
 
 export async function unificarParcelas(
   parcelaIds: string[],
+  novoCodigo: string,
   usuarioId: string
 ): Promise<string> {
   if (parcelaIds.length < 2) throw new Error('Selecione ao menos 2 parcelas')
@@ -161,7 +162,7 @@ export async function unificarParcelas(
      RETURNING id`,
     [
       ...parcelaIds,
-      `${base.codigo}-U`,
+      novoCodigo,
       base.bairro_id,
       base.logradouro_id,
       base.loteamento_id,

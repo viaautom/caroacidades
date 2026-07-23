@@ -413,8 +413,8 @@ export async function parcelasRoutes(app: FastifyInstance) {
     '/parcelas/unificar',
     { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO') },
     async (request, reply) => {
-      const { parcelaIds } = request.body as { parcelaIds: string[] }
-      const novoId = await unificarParcelas(parcelaIds, request.user.uid)
+      const { parcelaIds, novoCodigo } = request.body as { parcelaIds: string[]; novoCodigo: string }
+      const novoId = await unificarParcelas(parcelaIds, novoCodigo, request.user.uid)
       reply.code(201)
       return { id: novoId }
     }

@@ -130,6 +130,7 @@ export function EditToolbar() {
   const [bairros, setBairros] = useState<{ id: string; nome: string; geometry?: any }[]>([])
   const [camadas, setCamadas] = useState<{ id: string; nome: string }[]>([])
   const [unifyIds, setUnifyIds] = useState<string[]>([])
+  const [unifyCodigo, setUnifyCodigo] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [desmembrarState, setDesmembrarState] = useState<{ geometry: GeoJSON.LineString; layer: L.Layer } | null>(null)
   const [desmembrarCodigo, setDesmembrarCodigo] = useState('')
@@ -489,13 +490,16 @@ export function EditToolbar() {
 
   async function executarUnificacao() {
     if (unifyIds.length < 2) { toast.error('Selecione ao menos 2 parcelas'); return }
+    if (!unifyCodigo.trim()) { toast.error('Informe o novo código/matrícula'); return }
     setSalvando(true)
     try {
-      const res = await api.post('/parcelas/unificar', { parcelaIds: unifyIds })
+      const res = await api.post('/parcelas/unificar', { parcelaIds: unifyIds, novoCodigo: unifyCodigo.trim() })
       toast.success('Parcelas unificadas ✓')
       selectParcela(res.data.id)
       setUnifyIds([])
+      setUnifyCodigo('')
       setModo('idle')
+      refreshMVT()
     } catch (e: any) {
       toast.error(e?.response?.data?.error ?? 'Erro na unificação')
     } finally {
@@ -766,18 +770,32 @@ export function EditToolbar() {
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 14, lineHeight: 1 }}>×</button>
               </div>
             ))}
+
+            {unifyIds.length >= 2 && (
+              <div style={{ marginTop: 8, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#4b5563', marginBottom: 4 }}>Novo Código/Matrícula:</label>
+                <input
+                  type="text"
+                  value={unifyCodigo}
+                  onChange={e => setUnifyCodigo(e.target.value)}
+                  placeholder="Ex: 12345"
+                  style={{ width: '100%', padding: '4px', borderRadius: 4, border: '1px solid #d1d5db', fontSize: 11 }}
+                />
+              </div>
+            )}
+
             <button
               onClick={executarUnificacao}
-              disabled={unifyIds.length < 2 || salvando}
+              disabled={unifyIds.length < 2 || salvando || !unifyCodigo.trim()}
               style={{
                 width: '100%', marginTop: 8, padding: '6px',
-                background: unifyIds.length >= 2 ? '#1e3a5f' : '#e5e7eb',
-                color: unifyIds.length >= 2 ? 'white' : '#9ca3af',
-                border: 'none', borderRadius: 6, cursor: unifyIds.length >= 2 ? 'pointer' : 'default',
+                background: (unifyIds.length >= 2 && unifyCodigo.trim()) ? '#1e3a5f' : '#e5e7eb',
+                color: (unifyIds.length >= 2 && unifyCodigo.trim()) ? 'white' : '#9ca3af',
+                border: 'none', borderRadius: 6, cursor: (unifyIds.length >= 2 && unifyCodigo.trim()) ? 'pointer' : 'default',
                 fontSize: 12, fontWeight: 600,
               }}
             >
-              {salvando ? 'Unificando...' : 'Unificar'}
+              {salvando ? 'Unificando...' : 'Finalizar'}
             </button>
           </div>
         )}
