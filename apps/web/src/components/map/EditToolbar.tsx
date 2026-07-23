@@ -294,11 +294,6 @@ export function EditToolbar() {
       }
     }
 
-    if (modo === 'unificar') {
-      setUnifyIds(selectedParcelaId ? [selectedParcelaId] : [])
-      toast('Clique em parcelas no mapa para adicioná-las à seleção', { icon: '🔗', duration: 5000 })
-    }
-
     if (modo === 'guias') {
       ;(map as any).pm.enableDraw('Line')
       toast('Desenhe uma linha guia no mapa', { icon: '📏', duration: 3000 })
@@ -651,7 +646,7 @@ export function EditToolbar() {
           label="Unificar (Ctrl+Click)"
           icon="⊞"
           ativo={false}
-          onClick={() => toast.info('Para unificar parcelas, segure a tecla CTRL e clique nas parcelas desejadas no mapa.')}
+          onClick={() => toast('Para unificar parcelas, segure a tecla CTRL e clique nas parcelas desejadas no mapa.', { icon: 'ℹ️' })}
           title="Segure CTRL e clique nas parcelas para unificar"
         />
 
