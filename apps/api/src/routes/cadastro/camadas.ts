@@ -264,22 +264,32 @@ export async function camadasRoutes(app: FastifyInstance) {
     return { id: camada.id, nome, total: features.length, importadas, erros }
   })
 
-  // Importar Camada (GeoJSON direto)
+  // Importar Camada (GeoJSON ou KML direto)
   app.post('/camadas/upload-geojson', { preHandler: requireRole('ADMIN') }, async (request, reply) => {
     const data = await request.file()
     if (!data) return reply.code(400).send({ error: 'Nenhum arquivo enviado' })
 
-    const nome = request.headers['x-layer-name'] as string || 'Nova Camada GeoJSON'
+    const nome = request.headers['x-layer-name'] as string || 'Nova Camada'
     const buf = await data.toBuffer()
+    const content = buf.toString('utf-8')
 
     let fc: any
     try {
-      fc = JSON.parse(buf.toString('utf-8'))
-      if (fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
-        return reply.code(400).send({ error: 'O arquivo não é um FeatureCollection válido' })
+      if (content.trim().startsWith('<')) {
+        // Provável KML/XML
+        const { DOMParser } = require('@xmldom/xmldom')
+        const toGeoJSON = require('@tmcw/togeojson')
+        const kml = new DOMParser().parseFromString(content, 'text/xml')
+        fc = toGeoJSON.kml(kml)
+      } else {
+        fc = JSON.parse(content)
+      }
+
+      if (!fc || fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
+        return reply.code(400).send({ error: 'O arquivo não é um GeoJSON ou KML válido' })
       }
     } catch (err: any) {
-      return reply.code(400).send({ error: `Erro ao fazer parse do GeoJSON: ${err.message}` })
+      return reply.code(400).send({ error: `Erro ao fazer parse do arquivo: ${err.message}` })
     }
 
     const features = fc.features

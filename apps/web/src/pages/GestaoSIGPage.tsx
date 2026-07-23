@@ -106,9 +106,9 @@ function TabCamadas() {
     const file = e.target.files?.[0]
     if (!file) return
     const isZip = file.name.toLowerCase().endsWith('.zip')
-    const isGeojson = file.name.toLowerCase().endsWith('.geojson') || file.name.toLowerCase().endsWith('.json')
+    const isGeojson = file.name.toLowerCase().endsWith('.geojson') || file.name.toLowerCase().endsWith('.json') || file.name.toLowerCase().endsWith('.kml')
     if (!isZip && !isGeojson) {
-      toast.error('Selecione um arquivo .zip (Shapefile) ou .geojson/.json')
+      toast.error('Selecione um arquivo .zip (Shapefile), .geojson, .json ou .kml')
       return
     }
     setUploading(true)
@@ -116,7 +116,7 @@ function TabCamadas() {
       const form = new FormData()
       form.append('file', file)
       const endpoint = isGeojson ? '/camadas/upload-geojson' : '/camadas/upload-shp'
-      const baseName = file.name.replace(/\.(zip|geojson|json)$/i, '').replace(/_/g, ' ')
+      const baseName = file.name.replace(/\.(zip|geojson|json|kml)$/i, '').replace(/_/g, ' ')
       const res = await api.post(endpoint, form, {
         headers: { 'x-layer-name': baseName },
       })
@@ -172,9 +172,9 @@ function TabCamadas() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ margin: 0, color: '#1e3a5f', fontSize: 16 }}>Camadas Vetoriais</h3>
         <div style={{ display: 'flex', gap: 8 }}>
-          <input ref={shpInputRef} type="file" accept=".zip,.geojson,.json" style={{ display: 'none' }} onChange={handleShpUpload} />
+          <input ref={shpInputRef} type="file" accept=".zip,.geojson,.json,.kml" style={{ display: 'none' }} onChange={handleShpUpload} />
           <button style={outlineBtn()} disabled={uploading} onClick={() => shpInputRef.current?.click()}>
-            {uploading ? 'Importando...' : '↑ Upload (SHP / GeoJSON)'}
+            {uploading ? 'Importando...' : '↑ Upload (SHP / GeoJSON / KML)'}
           </button>
           <button style={btn()} onClick={() => setCriando(p => !p)}>+ Nova Camada</button>
         </div>
