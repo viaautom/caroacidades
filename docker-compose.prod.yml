@@ -14,8 +14,8 @@ services:
     networks:
       - dokploy-network
 
-  # 2. Backend (API Fastify)
   api:
+    image: sigweb-api-prod:v1
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -37,8 +37,8 @@ services:
     networks:
       - dokploy-network
 
-  # 3. Frontend (React/Vite servido via Nginx)
   web:
+    image: sigweb-web-prod:v1
     build:
       context: .
       dockerfile: apps/web/Dockerfile
