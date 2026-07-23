@@ -15,6 +15,10 @@ import {
 
 const EXPORT_FORMATS = ['csv', 'xml', 'xlsx'] as const
 
+export const MIGRATION_PARCELAS_GEOM = `
+  ALTER TABLE sigweb.parcelas ALTER COLUMN geometry TYPE GEOMETRY(Geometry, 31982);
+`
+
 type ExportFormat = (typeof EXPORT_FORMATS)[number]
 
 function escapeCsv(value: unknown) {

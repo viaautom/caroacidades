@@ -5,7 +5,7 @@ import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
 import staticFiles from '@fastify/static'
 import path from 'path'
-import { parcelasRoutes } from './routes/cadastro/parcelas'
+import { parcelasRoutes, MIGRATION_PARCELAS_GEOM } from './routes/cadastro/parcelas'
 import { edificacoesRoutes } from './routes/cadastro/edificacoes'
 import { bairrosRoutes } from './routes/cadastro/bairros'
 import { quadrasRoutes } from './routes/cadastro/quadras'
@@ -227,6 +227,9 @@ async function bootstrap() {
   const { query: dbQuery } = await import('./db/pool')
   dbQuery(MIGRATION_IMAGENS_360).catch(err =>
     app.log.warn({ err }, 'Migration imagens_360 skipped')
+  )
+  dbQuery(MIGRATION_PARCELAS_GEOM).catch(err =>
+    app.log.warn({ err }, 'Migration parcelas_geom skipped')
   )
   dbQuery(MIGRATION_CAMADAS).catch(err =>
     app.log.warn({ err }, 'Migration camadas_vetoriais skipped')
