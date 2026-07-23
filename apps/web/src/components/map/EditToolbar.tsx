@@ -121,7 +121,7 @@ function computeOrthogonalLine(geometry: GeoJSON.LineString): GeoJSON.LineString
 }
 
 export function EditToolbar() {
-  const { map, selectedParcelaId, selectParcela, refreshMVT, setLastDrawnGeometry } = useMapStore()
+  const { map, selectedParcelaId, selectParcela, refreshMVT, setLastDrawnGeometry, multiSelectedParcelas, clearMultiSelect } = useMapStore()
   const { perfil } = useAuthStore()
 
   const [modo, setModo] = useState<Modo>('idle')
@@ -129,8 +129,8 @@ export function EditToolbar() {
   const [form, setForm] = useState({ codigo: '', bairroId: '', bairroNome: '', camadaId: '' })
   const [bairros, setBairros] = useState<{ id: string; nome: string; geometry?: any }[]>([])
   const [camadas, setCamadas] = useState<{ id: string; nome: string }[]>([])
-  const [unifyIds, setUnifyIds] = useState<string[]>([])
   const [unifyCodigo, setUnifyCodigo] = useState('')
+  const [unifyModalOpen, setUnifyModalOpen] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [desmembrarState, setDesmembrarState] = useState<{ geometry: GeoJSON.LineString; layer: L.Layer } | null>(null)
   const [desmembrarCodigo, setDesmembrarCodigo] = useState('')
@@ -477,27 +477,18 @@ export function EditToolbar() {
   }
 
   // Clique no mapa em modo unificar — captura ID da parcela
-  useEffect(() => {
-    if (!map || modo !== 'unificar') return
-    const handler = (e: any) => {
-      // Tenta pegar ID de feature MVT
-      const id = e.layer?.properties?.id ?? e.sourceTarget?.feature?.properties?.id
-      if (id && !unifyIds.includes(id)) setUnifyIds(prev => [...prev, id])
-    }
-    map.on('click', handler)
-    return () => { map.off('click', handler) }
-  }, [map, modo, unifyIds])
-
   async function executarUnificacao() {
-    if (unifyIds.length < 2) { toast.error('Selecione ao menos 2 parcelas'); return }
+    const ids = multiSelectedParcelas.map(p => p.id)
+    if (ids.length < 2) { toast.error('Selecione ao menos 2 parcelas'); return }
     if (!unifyCodigo.trim()) { toast.error('Informe o novo código/matrícula'); return }
     setSalvando(true)
     try {
-      const res = await api.post('/parcelas/unificar', { parcelaIds: unifyIds, novoCodigo: unifyCodigo.trim() })
+      const res = await api.post('/parcelas/unificar', { parcelaIds: ids, novoCodigo: unifyCodigo.trim() })
       toast.success('Parcelas unificadas ✓')
       selectParcela(res.data.id)
-      setUnifyIds([])
+      clearMultiSelect()
       setUnifyCodigo('')
+      setUnifyModalOpen(false)
       setModo('idle')
       refreshMVT()
     } catch (e: any) {
@@ -657,14 +648,11 @@ export function EditToolbar() {
 
         {/* Unificar */}
         <BotaoFerramenta
-          label="Unificar"
+          label="Unificar (Ctrl+Click)"
           icon="⊞"
-          ativo={modo === 'unificar'}
-          onClick={() => {
-            if (modo === 'unificar') { setModo('idle'); setUnifyIds([]) }
-            else setModo('unificar')
-          }}
-          title="Combinar múltiplas parcelas em uma"
+          ativo={false}
+          onClick={() => toast.info('Para unificar parcelas, segure a tecla CTRL e clique nas parcelas desejadas no mapa.')}
+          title="Segure CTRL e clique nas parcelas para unificar"
         />
 
         {/* Linha guia */}
@@ -749,54 +737,92 @@ export function EditToolbar() {
           >Limpar ortogonais</button>
         </div>
 
-        {/* Painel de unificação */}
-        {modo === 'unificar' && (
+        {/* FAB de Unificação */}
+        {multiSelectedParcelas.length >= 2 && !unifyModalOpen && (
           <div style={{
-            background: 'white', borderRadius: 8, padding: 10, width: 180,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)', fontSize: 12,
+            position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
+            background: '#1e3a5f', padding: '10px 20px', borderRadius: 30,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)', display: 'flex', gap: 12, alignItems: 'center', zIndex: 9999
           }}>
-            <p style={{ margin: '0 0 6px', fontWeight: 700, color: '#1e3a5f' }}>
-              Unificar parcelas
-            </p>
-            <p style={{ margin: '0 0 8px', color: '#6b7280', fontSize: 11 }}>
-              {unifyIds.length === 0
-                ? 'Clique nas parcelas no mapa'
-                : `${unifyIds.length} parcela(s) selecionada(s)`}
-            </p>
-            {unifyIds.map((id) => (
-              <div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ color: '#374151', fontFamily: 'monospace', fontSize: 11 }}>{id.slice(0, 8)}…</span>
-                <button onClick={() => setUnifyIds(p => p.filter(x => x !== id))}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 14, lineHeight: 1 }}>×</button>
-              </div>
-            ))}
+            <span style={{ color: 'white', fontWeight: 600, fontSize: 14 }}>
+              {multiSelectedParcelas.length} parcelas selecionadas
+            </span>
+            <button
+              onClick={() => setUnifyModalOpen(true)}
+              style={{
+                background: '#10b981', color: 'white', border: 'none', borderRadius: 20,
+                padding: '6px 16px', fontWeight: 700, cursor: 'pointer', fontSize: 13
+              }}
+            >
+              Unificar Lotes
+            </button>
+            <button
+              onClick={clearMultiSelect}
+              style={{ background: 'none', border: 'none', color: '#fca5a5', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
+              title="Cancelar seleção"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
-            {unifyIds.length >= 2 && (
-              <div style={{ marginTop: 8, marginBottom: 8 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#4b5563', marginBottom: 4 }}>Novo Código/Matrícula:</label>
+        {/* Modal de Confirmação da Unificação */}
+        {unifyModalOpen && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+            display: 'flex', justifyContent: 'center', alignItems: 'center'
+          }}>
+            <div style={{
+              background: 'white', padding: 24, borderRadius: 12, width: 400,
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+            }}>
+              <h3 style={{ margin: '0 0 16px', color: '#1e3a5f' }}>Unificar Parcelas</h3>
+              <p style={{ margin: '0 0 12px', fontSize: 14, color: '#4b5563' }}>
+                Você quer unificar os {multiSelectedParcelas.length} lotes abaixo?
+              </p>
+              <div style={{ background: '#f3f4f6', padding: 12, borderRadius: 8, maxHeight: 150, overflowY: 'auto', marginBottom: 16 }}>
+                {multiSelectedParcelas.map(p => (
+                  <div key={p.id} style={{ fontSize: 13, fontFamily: 'monospace', color: '#374151', marginBottom: 4 }}>
+                    • Código: {p.codigo}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                  Novo Código / Matrícula
+                </label>
                 <input
                   type="text"
                   value={unifyCodigo}
                   onChange={e => setUnifyCodigo(e.target.value)}
-                  placeholder="Ex: 12345"
-                  style={{ width: '100%', padding: '4px', borderRadius: 4, border: '1px solid #d1d5db', fontSize: 11 }}
+                  placeholder="Ex: 99999"
+                  style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14 }}
                 />
               </div>
-            )}
 
-            <button
-              onClick={executarUnificacao}
-              disabled={unifyIds.length < 2 || salvando || !unifyCodigo.trim()}
-              style={{
-                width: '100%', marginTop: 8, padding: '6px',
-                background: (unifyIds.length >= 2 && unifyCodigo.trim()) ? '#1e3a5f' : '#e5e7eb',
-                color: (unifyIds.length >= 2 && unifyCodigo.trim()) ? 'white' : '#9ca3af',
-                border: 'none', borderRadius: 6, cursor: (unifyIds.length >= 2 && unifyCodigo.trim()) ? 'pointer' : 'default',
-                fontSize: 12, fontWeight: 600,
-              }}
-            >
-              {salvando ? 'Unificando...' : 'Finalizar'}
-            </button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <button
+                  onClick={() => setUnifyModalOpen(false)}
+                  style={{ padding: '8px 16px', background: 'none', border: 'none', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={executarUnificacao}
+                  disabled={salvando || !unifyCodigo.trim()}
+                  style={{
+                    padding: '8px 20px', borderRadius: 6, border: 'none', fontWeight: 600,
+                    background: unifyCodigo.trim() ? '#10b981' : '#e5e7eb',
+                    color: unifyCodigo.trim() ? 'white' : '#9ca3af',
+                    cursor: unifyCodigo.trim() ? 'pointer' : 'default'
+                  }}
+                >
+                  {salvando ? 'Salvando...' : 'Salvar Unificação'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

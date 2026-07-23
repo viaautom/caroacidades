@@ -16,6 +16,7 @@ export type PendingTarget = { lat: number; lng: number; zoom?: number }
 type MapState = {
   map: LeafletMap | null
   selectedParcelaId: string | null
+  multiSelectedParcelas: { id: string; codigo: string }[]
   selectedPosteId: string | null
   selectedArvoreId: string | null
   selectedPatrimonioId: string | null
@@ -34,6 +35,8 @@ type MapState = {
   setMap: (map: LeafletMap | null) => void
   setBaseLayer: (baseLayer: BaseLayerId) => void
   selectParcela: (id: string | null) => void
+  toggleMultiSelect: (id: string, codigo: string) => void
+  clearMultiSelect: () => void
   selectPoste: (id: string | null) => void
   selectArvore: (id: string | null) => void
   selectPatrimonio: (id: string | null) => void
@@ -54,6 +57,7 @@ type MapState = {
 export const useMapStore = create<MapState>((set, get) => ({
   map: null,
   selectedParcelaId: null,
+  multiSelectedParcelas: [],
   selectedPosteId: null,
   selectedArvoreId: null,
   selectedPatrimonioId: null,
@@ -76,6 +80,12 @@ export const useMapStore = create<MapState>((set, get) => ({
   setMap: (map) => set({ map }),
   setBaseLayer: (baseLayer) => set({ baseLayer }),
   selectParcela: (id) => set({ selectedParcelaId: id }),
+  toggleMultiSelect: (id, codigo) => set((state) => {
+    const exists = state.multiSelectedParcelas.find(p => p.id === id)
+    if (exists) return { multiSelectedParcelas: state.multiSelectedParcelas.filter(p => p.id !== id) }
+    return { multiSelectedParcelas: [...state.multiSelectedParcelas, { id, codigo }] }
+  }),
+  clearMultiSelect: () => set({ multiSelectedParcelas: [] }),
   selectPoste: (id) => set({ selectedPosteId: id }),
   selectArvore: (id) => set({ selectedArvoreId: id }),
   selectPatrimonio: (id) => set({ selectedPatrimonioId: id }),

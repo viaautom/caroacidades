@@ -95,7 +95,20 @@ const REURB_BORDER: Record<string, string> = {
 }
 
 export function MVTLayer() {
-  const { map, activeLayers, selectParcela, selectedParcelaId, mvtRefreshKey, postesRefreshKey, arvoresRefreshKey, selectPoste, selectArvore } = useMapStore()
+  const { 
+    map, 
+    activeLayers, 
+    selectParcela, 
+    selectedParcelaId, 
+    multiSelectedParcelas,
+    toggleMultiSelect,
+    clearMultiSelect,
+    mvtRefreshKey, 
+    postesRefreshKey, 
+    arvoresRefreshKey, 
+    selectPoste, 
+    selectArvore 
+  } = useMapStore()
 
   const { data: camadasWms = [] } = useQuery<CamadaWms[]>({
     queryKey: ['camadas-wms'],
@@ -111,8 +124,11 @@ export function MVTLayer() {
       `${PG_TILESERV}/sigweb.parcelas/{z}/{x}/{y}.pbf?v=${mvtRefreshKey}`,
       {
         vectorTileLayerStyles: {
-          'sigweb.parcelas': (props: any) =>
-            String(props.id) === selectedParcelaId ? PARCELA_SELECTED : PARCELA_STYLE,
+          'sigweb.parcelas': (props: any) => {
+            const id = String(props.id)
+            if (id === selectedParcelaId || multiSelectedParcelas.some(p => p.id === id)) return PARCELA_SELECTED
+            return PARCELA_STYLE
+          }
         },
         interactive: true,
         getFeatureId: (f: any) => f.properties?.id ?? f.id,
@@ -122,20 +138,26 @@ export function MVTLayer() {
     if (parcelasLayer && activeLayers.includes('parcelas')) {
       parcelasLayer.addTo(map)
       parcelasLayer.on('click', (e: any) => {
-        const id = e.layer?.properties?.id
-          ?? e.layer?.feature?.properties?.id
-          ?? e.feature?.properties?.id
-          ?? e.feature?.id
-          ?? e.layer?.feature?.id
-          ?? e.id
-        if (id) selectParcela(String(id))
+        const id = e.layer?.properties?.id ?? e.layer?.feature?.properties?.id ?? e.feature?.properties?.id ?? e.feature?.id ?? e.layer?.feature?.id ?? e.id
+        const codigo = e.layer?.properties?.codigo ?? e.layer?.feature?.properties?.codigo ?? e.feature?.properties?.codigo ?? 'S/C'
+        
+        const isCtrl = e.originalEvent?.ctrlKey || e.originalEvent?.metaKey
+        
+        if (id) {
+          if (isCtrl) {
+            toggleMultiSelect(String(id), String(codigo))
+          } else {
+            selectParcela(String(id))
+            clearMultiSelect()
+          }
+        }
       })
     }
 
     return () => {
       if (parcelasLayer) map.removeLayer(parcelasLayer)
     }
-  }, [map, activeLayers, selectedParcelaId, mvtRefreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, activeLayers, selectedParcelaId, multiSelectedParcelas, mvtRefreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Camada de edificações (quando ativa) — coloridas por situação (req 20/21/26)
   useEffect(() => {
