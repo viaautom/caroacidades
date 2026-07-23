@@ -68,7 +68,11 @@ export const useMapStore = create<MapState>((set, get) => ({
   lastDrawnGeometry: null,
   initialCenter: [-29.0803, -53.8389],
   initialZoom: 15,
-  setInitialView: (center, zoom) => set({ initialCenter: center, initialZoom: zoom }),
+  setInitialView: (center, zoom) => {
+    set({ initialCenter: center, initialZoom: zoom })
+    const { map } = get()
+    if (map) map.setView(center, zoom, { animate: false })
+  },
   setMap: (map) => set({ map }),
   setBaseLayer: (baseLayer) => set({ baseLayer }),
   selectParcela: (id) => set({ selectedParcelaId: id }),
