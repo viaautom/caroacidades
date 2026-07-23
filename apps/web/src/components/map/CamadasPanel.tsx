@@ -274,7 +274,7 @@ export function CamadasPanel() {
         onClick={() => setAberta(p => !p)}
         title="Importar shapefile ou KML (sessão)"
         style={{
-          position: 'absolute', bottom: 70, left: aberta ? 308 : 10, zIndex: 1001,
+          position: 'absolute', bottom: 70, left: aberta ? 308 : 10, zIndex: 1006,
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '8px 14px', borderRadius: 8,
           background: aberta ? '#1e3a5f' : 'white',
@@ -290,7 +290,7 @@ export function CamadasPanel() {
       {aberta && (
         <div style={{
           position: 'absolute', top: 0, left: 0, bottom: 0, width: 300,
-          background: 'white', zIndex: 1000,
+          background: 'white', zIndex: 1005,
           boxShadow: '4px 0 20px rgba(0,0,0,0.15)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>

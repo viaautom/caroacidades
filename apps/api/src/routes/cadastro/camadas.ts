@@ -234,16 +234,16 @@ export async function camadasRoutes(app: FastifyInstance) {
       try {
         const codigo = `IMP-${camada.id.slice(0, 6)}-${String(idx + 1).padStart(4, '0')}`
         const atributos = feat.properties ?? {}
-        const hasGeom = feat.geometry?.coordinates
+        const hasGeom = feat.geometry && typeof feat.geometry === 'object' && feat.geometry.type
         const geomExpr = hasGeom
           ? srcSrid === 31982
-            ? `ST_SetSRID(ST_GeomFromGeoJSON($4), 31982)`
-            : `ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982)`
+            ? `ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982))`
+            : `ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982))`
           : 'NULL'
         const areaExpr = hasGeom
           ? srcSrid === 31982
-            ? `ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982))`
-            : `ST_Area(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982))`
+            ? `ST_Area(ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982)))`
+            : `ST_Area(ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982)))`
           : 'NULL'
 
         const params: unknown[] = [codigo, camada.id, JSON.stringify(atributos)]
