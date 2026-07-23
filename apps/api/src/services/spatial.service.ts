@@ -150,11 +150,11 @@ export async function unificarParcelas(
   const rows = await query<{ id: string }>(
     `INSERT INTO sigweb.parcelas (codigo, bairro_id, logradouro_id, loteamento_id, quadra_id, geometry, area_m2)
      SELECT
-       $${parcelaIds.length + 1},
-       $${parcelaIds.length + 2},
-       $${parcelaIds.length + 3},
-       $${parcelaIds.length + 4},
-       $${parcelaIds.length + 5},
+       $${parcelaIds.length + 1}::varchar,
+       $${parcelaIds.length + 2}::uuid,
+       $${parcelaIds.length + 3}::uuid,
+       $${parcelaIds.length + 4}::uuid,
+       $${parcelaIds.length + 5}::uuid,
        ST_Union(geometry),
        ST_Area(ST_Union(geometry))
      FROM sigweb.parcelas

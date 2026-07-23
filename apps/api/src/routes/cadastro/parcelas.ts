@@ -414,9 +414,13 @@ export async function parcelasRoutes(app: FastifyInstance) {
     { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO') },
     async (request, reply) => {
       const { parcelaIds, novoCodigo } = request.body as { parcelaIds: string[]; novoCodigo: string }
-      const novoId = await unificarParcelas(parcelaIds, novoCodigo, request.user.uid)
-      reply.code(201)
-      return { id: novoId }
+      try {
+        const novoId = await unificarParcelas(parcelaIds, novoCodigo, request.user.uid)
+        reply.code(201)
+        return { id: novoId }
+      } catch (err: any) {
+        return reply.code(400).send({ error: err.message ?? 'Erro na unificação' })
+      }
     }
   )
 
