@@ -732,10 +732,9 @@ export function EditToolbar() {
           >Limpar ortogonais</button>
         </div>
 
-        {/* FAB de Unificação */}
         {multiSelectedParcelas.length >= 2 && !unifyModalOpen && (
           <div style={{
-            position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
+            position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
             background: '#1e3a5f', padding: '10px 20px', borderRadius: 30,
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)', display: 'flex', gap: 12, alignItems: 'center', zIndex: 9999
           }}>
