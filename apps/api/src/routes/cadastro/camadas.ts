@@ -105,7 +105,7 @@ export async function camadasRoutes(app: FastifyInstance) {
   })
 
   // Deletar camada (desvincula parcelas)
-  app.delete('/camadas/:id', { preHandler: requireRole('ADMIN') }, async (request, reply) => {
+  app.delete('/camadas/:id', { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     await query(`UPDATE sigweb.parcelas SET camada_id = NULL WHERE camada_id = $1`, [id])
     await query(`DELETE FROM sigweb.camadas_vetoriais WHERE id = $1`, [id])
@@ -179,9 +179,9 @@ export async function camadasRoutes(app: FastifyInstance) {
     const { join } = await import('path')
     const { writeFileSync, unlinkSync, existsSync } = await import('fs')
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const JSZip = require('jszip') as { loadAsync(data: Buffer): Promise<{ files: Record<string, { name: string; dir: boolean; async(type: string): Promise<ArrayBuffer> }> }> }
+    const JSZip = require('jszip') as { loadAsync(data: Buffer): Promise<{ files: Record<string, { name: string; dir: boolean; async(type: string): Promise<any> }> }> }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const shapefile = require('shapefile') as { read(path: string): Promise<{ features: any[] }> }
+    const shapefile = require('shapefile') as { read(shp: string, dbf?: string): Promise<{ features: any[] }> }
 
     const data = await request.file()
     if (!data) return reply.code(400).send({ error: 'Nenhum arquivo enviado' })
@@ -296,7 +296,7 @@ export async function camadasRoutes(app: FastifyInstance) {
   })
 
   // Importar Camada (GeoJSON ou KML direto)
-  app.post('/camadas/upload-geojson', { preHandler: requireRole('ADMIN') }, async (request, reply) => {
+  app.post('/camadas/upload-geojson', { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO') }, async (request, reply) => {
     const data = await request.file()
     if (!data) return reply.code(400).send({ error: 'Nenhum arquivo enviado' })
 
@@ -474,7 +474,7 @@ export async function camadasRoutes(app: FastifyInstance) {
     return { ok: true }
   })
 
-  app.delete('/camadas-wms/:id', { preHandler: requireRole('ADMIN') }, async (request, reply) => {
+  app.delete('/camadas-wms/:id', { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     await query(`DELETE FROM sigweb.camadas_wms WHERE id = $1`, [id])
     reply.code(204)

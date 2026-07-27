@@ -2,6 +2,17 @@ import { FastifyInstance } from 'fastify'
 import { query } from '../../db/pool'
 import { authMiddleware } from '../../middleware/auth.middleware'
 
+export const MIGRATION_ANOTACOES = `
+  CREATE TABLE IF NOT EXISTS sigweb.anotacoes (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    topico       TEXT NOT NULL,
+    auth_uid     UUID NOT NULL,
+    nome_autor   TEXT NOT NULL,
+    implementado BOOLEAN NOT NULL DEFAULT false,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`
+
 export default async function anotacoesRoutes(app: FastifyInstance) {
   // Aplicar middleware de autenticação em todas as rotas de anotações
   app.addHook('preHandler', authMiddleware)

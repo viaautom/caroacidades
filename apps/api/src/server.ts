@@ -6,7 +6,7 @@ import multipart from '@fastify/multipart'
 import staticFiles from '@fastify/static'
 import path from 'path'
 import { parcelasRoutes, MIGRATION_PARCELAS_GEOM } from './routes/cadastro/parcelas'
-import anotacoesRoutes from './routes/cadastro/anotacoes'
+import anotacoesRoutes, { MIGRATION_ANOTACOES } from './routes/cadastro/anotacoes'
 import { edificacoesRoutes } from './routes/cadastro/edificacoes'
 import { bairrosRoutes } from './routes/cadastro/bairros'
 import { quadrasRoutes } from './routes/cadastro/quadras'
@@ -227,6 +227,9 @@ async function bootstrap() {
 
   // Migrações executadas após o servidor subir (pool já aquecido)
   const { query: dbQuery } = await import('./db/pool')
+  dbQuery(MIGRATION_ANOTACOES).catch(err =>
+    app.log.warn({ err }, 'Migration anotacoes skipped')
+  )
   dbQuery(MIGRATION_IMAGENS_360).catch(err =>
     app.log.warn({ err }, 'Migration imagens_360 skipped')
   )
