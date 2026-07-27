@@ -51,11 +51,12 @@ function detectShpSrid(features: any[]): 4326 | 31982 {
 export async function camadasRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authMiddleware)
 
-  // Listar camadas com contagem de feições
+  // Listar camadas com contagem de feições e bounding box
   app.get('/camadas', async () => {
     return query(`
       SELECT cv.id, cv.nome, cv.descricao, cv.cor, cv.colunas, cv.created_at,
-             COUNT(p.id)::int AS total_parcelas
+             COUNT(p.id)::int AS total_parcelas,
+             ST_AsGeoJSON(ST_Extent(ST_Transform(p.geometry, 4326))::geometry)::json AS bounds
       FROM sigweb.camadas_vetoriais cv
       LEFT JOIN sigweb.parcelas p ON p.camada_id = cv.id
       GROUP BY cv.id

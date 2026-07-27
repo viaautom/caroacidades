@@ -20,13 +20,13 @@ const OVERLAY_LAYERS = [
   { id: '360_terrestre',     label: 'Imageamento 360°' },
 ]
 
-type Camada = { id: string; nome: string; cor: string; total_parcelas: number }
+type Camada = { id: string; nome: string; cor: string; total_parcelas: number; bounds?: any }
 type CamadaWms = { id: string; nome: string; categoria: string | null; ativa: boolean }
 
 export function LayerControl() {
   const {
     activeLayers, toggleLayer, bairros, zoomToBairro,
-    layerPanelOpen: open, setLayerPanelOpen: setOpen,
+    layerPanelOpen: open, setLayerPanelOpen: setOpen, map
   } = useMapStore()
   const qc = useQueryClient()
   const [bairrosExpanded, setBairrosExpanded] = useState(false)
@@ -110,6 +110,16 @@ export function LayerControl() {
       toast.success(`${nome} exportada`)
     } catch {
       toast.error('Erro ao exportar camada')
+    }
+  }
+
+  function zoomToCamada(boundsGeoJSON: any) {
+    if (!map || !boundsGeoJSON) return
+    try {
+      const layer = L.geoJSON(boundsGeoJSON)
+      map.fitBounds(layer.getBounds(), { padding: [40, 40], maxZoom: 18, animate: true })
+    } catch (e) {
+      console.error(e)
     }
   }
 
@@ -372,6 +382,7 @@ export function LayerControl() {
                     badge={c.total_parcelas > 0 ? String(c.total_parcelas) : undefined}
                     onDownload={() => downloadCamada(c.id, c.nome)}
                     onDelete={() => deleteCamada(c.id, c.nome)}
+                    onZoom={c.bounds ? () => zoomToCamada(c.bounds) : undefined}
                   />
                 )
               })
@@ -418,7 +429,7 @@ function SectionHeader({ label, action }: { label: string; action?: React.ReactN
 }
 
 function LayerRow({
-  label, on, onToggle, extra, colorDot, badge, onDownload, onDelete,
+  label, on, onToggle, extra, colorDot, badge, onDownload, onDelete, onZoom
 }: {
   label: string
   on: boolean
@@ -428,6 +439,7 @@ function LayerRow({
   badge?: string
   onDownload?: () => void
   onDelete?: () => void
+  onZoom?: () => void
 }) {
   return (
     <div style={{
@@ -469,6 +481,18 @@ function LayerRow({
           }}>{badge}</span>
         )}
       </button>
+      {onZoom && (
+        <button
+          onClick={e => { e.stopPropagation(); onZoom() }}
+          title="Centralizar no mapa"
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 14, color: '#4b5563', padding: '0 4px', lineHeight: 1, flexShrink: 0,
+          }}
+        >
+          👁
+        </button>
+      )}
       {onDownload && (
         <button
           onClick={e => { e.stopPropagation(); onDownload() }}
