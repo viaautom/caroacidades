@@ -932,6 +932,17 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
     }
   }
 
+  async function excluirUsuario(uid: string, email: string) {
+    if (!confirm(`Tem certeza que deseja EXCLUIR PERMANENTEMENTE o usuário ${email}? Isso apagará a conta do banco e liberará o e-mail para um novo cadastro.`)) return
+    try {
+      await api.delete(`/usuarios/${uid}`)
+      qc.invalidateQueries({ queryKey: ['usuarios'] })
+      toast.success('Usuário excluído permanentemente.')
+    } catch {
+      toast.error('Erro ao excluir usuário')
+    }
+  }
+
   async function criarUsuario() {
     if (!novoForm.email || !novoForm.nome || !novoForm.senha) {
       toast.error('Preencha todos os campos obrigatórios')
@@ -1020,7 +1031,7 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 560 }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                {['E-mail', 'Nome', 'Perfil', 'Alterar perfil', 'Situação'].map(h => (
+                {['E-mail', 'Nome', 'Perfil', 'Alterar perfil', 'Ações'].map(h => (
                   <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -1050,19 +1061,31 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
                       <span style={{ color: '#9ca3af', fontSize: 12 }}>— requer ADMIN —</span>
                     )}
                   </td>
-                  <td style={{ padding: '8px 12px' }}>
+                  <td style={{ padding: '8px 12px', display: 'flex', gap: 6 }}>
                     {perfil === 'ADMIN' && (
-                      <button
-                        onClick={() => setAtivo(u.auth_uid ?? u.id, !u.ativo)}
-                        style={{
-                          padding: '3px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
-                          background: u.ativo !== false ? '#fee2e2' : '#dcfce7',
-                          color: u.ativo !== false ? '#dc2626' : '#16a34a',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {u.ativo !== false ? 'Suspender' : 'Reativar'}
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setAtivo(u.auth_uid ?? u.id, !u.ativo)}
+                          style={{
+                            padding: '3px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
+                            background: u.ativo !== false ? '#fee2e2' : '#dcfce7',
+                            color: u.ativo !== false ? '#dc2626' : '#16a34a',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {u.ativo !== false ? 'Suspender' : 'Reativar'}
+                        </button>
+                        <button
+                          onClick={() => excluirUsuario(u.auth_uid ?? u.id, u.email)}
+                          style={{
+                            padding: '3px 10px', fontSize: 11, borderRadius: 6, border: '1px solid #dc2626', cursor: 'pointer',
+                            background: 'white', color: '#dc2626', fontWeight: 600,
+                          }}
+                          title="Excluir permanentemente"
+                        >
+                          Apagar
+                        </button>
+                      </>
                     )}
                   </td>
                 </tr>
