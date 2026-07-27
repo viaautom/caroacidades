@@ -1,29 +1,29 @@
 import { FastifyInstance } from 'fastify'
-import { db } from '../../db/pool'
-import { requireAuth } from '../../middleware/auth.middleware'
+import { query } from '../../db/pool'
+import { authMiddleware } from '../../middleware/auth.middleware'
 
 export default async function anotacoesRoutes(app: FastifyInstance) {
   // Aplicar middleware de autenticação em todas as rotas de anotações
-  app.addHook('onRequest', requireAuth)
+  app.addHook('preHandler', authMiddleware)
 
   app.get('/', async (request, reply) => {
-    const { rows } = await db.query('SELECT * FROM sigweb.anotacoes ORDER BY created_at DESC')
+    const { rows } = await query('SELECT * FROM sigweb.anotacoes ORDER BY created_at DESC')
     return rows
   })
 
   app.post('/', async (request, reply) => {
     const { topico } = request.body as { topico: string }
-    const user = request.user // preenchido pelo requireAuth
+    const user = request.user // preenchido pelo authMiddleware
 
     if (!topico) {
       return reply.code(400).send({ error: 'Tópico é obrigatório' })
     }
 
-    const { rows } = await db.query(
+    const { rows } = await query(
       `INSERT INTO sigweb.anotacoes (topico, auth_uid, nome_autor) 
        VALUES ($1, $2, $3) 
        RETURNING *`,
-      [topico, user.auth_uid || user.id, user.nome || user.email]
+      [topico, user.uid, user.email]
     )
 
     return reply.code(201).send(rows[0])
@@ -35,11 +35,12 @@ export default async function anotacoesRoutes(app: FastifyInstance) {
     const user = request.user
 
     // Apenas ADMIN ou DESENVOLVEDOR podem alterar o status
+    // @ts-ignore - 'DESENVOLVEDOR' might not be recognized yet by tsc if shared wasn't built correctly
     if (user.perfil !== 'ADMIN' && user.perfil !== 'DESENVOLVEDOR') {
       return reply.code(403).send({ error: 'Permissão negada. Apenas Administradores ou Desenvolvedores podem marcar como implementado.' })
     }
 
-    const { rows } = await db.query(
+    const { rows } = await query(
       'UPDATE sigweb.anotacoes SET implementado = $1 WHERE id = $2 RETURNING *',
       [implementado, id]
     )
