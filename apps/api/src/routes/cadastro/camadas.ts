@@ -198,8 +198,29 @@ export async function camadasRoutes(app: FastifyInstance) {
     // Encontra os arquivos .shp e .dbf dentro do zip
     const shpEntry = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.shp') && !f.dir)
     const dbfEntry = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.dbf') && !f.dir)
+    const prjEntry = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.prj') && !f.dir)
 
     if (!shpEntry) return reply.code(400).send({ error: 'Arquivo .shp não encontrado dentro do ZIP' })
+
+    let prjSrid: number | null = null
+    if (prjEntry) {
+      try {
+        const prjText = (await prjEntry.async('string')).toUpperCase()
+        const epsgMatch = prjText.match(/AUTHORITY\["EPSG","(\d+)"\]\]$/)
+        if (epsgMatch && epsgMatch[1]) {
+          prjSrid = parseInt(epsgMatch[1], 10)
+        } else if (prjText.includes('UTM') || prjText.includes('TRANSVERSE_MERCATOR')) {
+          const cmMatch = prjText.match(/PARAMETER\["CENTRAL_MERIDIAN",([^\]]+)\]/)
+          const cm = cmMatch ? parseFloat(cmMatch[1]) : null
+          if (cm === -57) prjSrid = 31981
+          else if (cm === -51) prjSrid = 31982
+          else if (cm === -45) prjSrid = 31983
+          else if (cm === -63) prjSrid = 31980
+        } else if (prjText.includes('SIRGAS') && prjText.includes('GEOGCS') && !prjText.includes('PROJCS')) {
+          prjSrid = 4674
+        }
+      } catch (e) { /* ignore prj parse errors */ }
+    }
 
     const tmpDir = os.tmpdir()
     const prefix = `shp_${Date.now()}`
@@ -220,8 +241,8 @@ export async function camadasRoutes(app: FastifyInstance) {
       if (existsSync(dbfPath)) unlinkSync(dbfPath)
     }
 
-    // Detecta se as coordenadas são UTM/EPSG:31982 (valores > 180) ou WGS84
-    const srcSrid = detectShpSrid(features)
+    // Detecta SRID pelo PRJ ou heurística WGS84 vs UTM
+    const srcSrid = prjSrid ?? detectShpSrid(features)
 
     // Cria a camada
     const [camada] = await query<{ id: string }>(
@@ -239,12 +260,12 @@ export async function camadasRoutes(app: FastifyInstance) {
         const geomExpr = hasGeom
           ? srcSrid === 31982
             ? `ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982))`
-            : `ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4674), 31982))`
+            : `ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), ${srcSrid}), 31982))`
           : 'NULL'
         const areaExpr = hasGeom
           ? srcSrid === 31982
             ? `ST_Area(ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982)))`
-            : `ST_Area(ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4674), 31982)))`
+            : `ST_Area(ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), ${srcSrid}), 31982)))`
           : 'NULL'
 
         const params: unknown[] = [codigo, camada.id, JSON.stringify(atributos)]
