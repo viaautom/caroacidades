@@ -34,7 +34,7 @@ export function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
       if (error) throw error
       // navegação disparada pelo useEffect acima quando o auth state confirmar
     } catch (err: any) {
@@ -47,8 +47,7 @@ export function LoginPage() {
     }
   }
 
-  // Auto-cadastro de cidadão (req 11): cria a conta com perfil CIDADAO no
-  // backend, efetua o login normalmente e dispara o e-mail de verificação
+  // Auto-cadastro de cidadão (req 11)
   async function handleCadastro(e: React.FormEvent) {
     e.preventDefault()
     if (!/^\(\d{2}\) \d{4,5}-\d{4}$/.test(celular)) {
@@ -57,13 +56,32 @@ export function LoginPage() {
     }
     setLoading(true)
     try {
-      await api.post('/auto-cadastro', { nome, email, celular, senha: password })
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      await api.post('/auto-cadastro', { nome, email: email.trim(), celular, senha: password })
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
       if (error) throw error
-      await supabase.auth.resend({ type: 'signup', email })
-      toast.success('Conta criada! Verifique seu e-mail para confirmar o cadastro.')
+      toast.success('Conta criada com sucesso!')
     } catch (err: any) {
-      toast.error(err.response?.data?.error ?? 'Erro ao criar a conta')
+      const msg = err.response?.data?.error || err.message || 'Erro ao criar a conta'
+      toast.error(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!email.trim()) {
+      toast.error('Digite seu e-mail no campo acima para recuperar a senha.')
+      return
+    }
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (error) throw error
+      toast.success('Instruções de recuperação enviadas para o seu e-mail!')
+    } catch (err: any) {
+      toast.error('Erro ao solicitar recuperação: ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -173,7 +191,7 @@ export function LoginPage() {
             />
           </div>
 
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 8 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Senha
             </label>
@@ -192,6 +210,24 @@ export function LoginPage() {
               onBlur={e  => (e.target.style.borderColor = '#e5e7eb')}
             />
           </div>
+
+          {!cadastro && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                style={{
+                  background: 'none', border: 'none', padding: 0,
+                  color: '#6b7280', fontSize: 12, cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Esqueci minha senha
+              </button>
+            </div>
+          )}
+          
+          {cadastro && <div style={{ marginBottom: 24 }}></div>}
 
           <button
             type="submit"

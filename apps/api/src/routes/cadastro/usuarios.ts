@@ -46,7 +46,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email: body.email,
         password: body.senha,
-        email_confirm: false,
+        email_confirm: true,
         user_metadata: { nome: body.nome },
       })
       

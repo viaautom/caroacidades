@@ -120,7 +120,7 @@ async function bootstrap() {
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: body.data.email,
       password: body.data.senha,
-      email_confirm: false,
+      email_confirm: true,
       user_metadata: { nome: body.data.nome },
     })
     if (error || !data.user) {
