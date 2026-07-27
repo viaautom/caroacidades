@@ -39,13 +39,13 @@ function flatCoords(c: unknown): number[] {
   return (c as unknown[]).flatMap(flatCoords)
 }
 
-// Returns 31982 if UTM coordinates detected, otherwise 4326 (WGS84)
-function detectShpSrid(features: any[]): 4326 | 31982 {
+// Returns 31982 if UTM coordinates detected, otherwise 4674 (WGS84)
+function detectShpSrid(features: any[]): 4674 | 31982 {
   for (const f of features.slice(0, 5)) {
     const coords = flatCoords(f.geometry?.coordinates)
     if (coords.some(v => Math.abs(v) > 180)) return 31982
   }
-  return 4326
+  return 4674
 }
 
 export async function camadasRoutes(app: FastifyInstance) {
@@ -121,7 +121,7 @@ export async function camadasRoutes(app: FastifyInstance) {
     const rows = await query(`
       SELECT p.id, p.codigo, p.area_m2, p.atributos,
              b.nome AS bairro, l.nome AS logradouro,
-             ST_AsGeoJSON(ST_Transform(p.geometry, 4326))::json AS geometry
+             ST_AsGeoJSON(ST_Transform(p.geometry, 4674))::json AS geometry
       FROM sigweb.parcelas p
       LEFT JOIN sigweb.bairros b ON b.id = p.bairro_id
       LEFT JOIN sigweb.logradouros l ON l.id = p.logradouro_id
@@ -150,7 +150,7 @@ export async function camadasRoutes(app: FastifyInstance) {
       atributos: Record<string, unknown>; geometry: object | null
     }>(`
       SELECT p.id, p.codigo, p.area_m2, p.atributos,
-             ST_AsGeoJSON(ST_Transform(p.geometry, 4326))::json AS geometry
+             ST_AsGeoJSON(ST_Transform(p.geometry, 4674))::json AS geometry
       FROM sigweb.parcelas p
       WHERE p.camada_id = $1 AND p.geometry IS NOT NULL
       ORDER BY p.codigo
@@ -159,6 +159,7 @@ export async function camadasRoutes(app: FastifyInstance) {
     const fc = {
       type: 'FeatureCollection',
       name: camada.nome,
+      crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::4674' } },
       features: rows.map(r => ({
         type: 'Feature',
         geometry: r.geometry,
@@ -239,12 +240,12 @@ export async function camadasRoutes(app: FastifyInstance) {
         const geomExpr = hasGeom
           ? srcSrid === 31982
             ? `ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982))`
-            : `ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982))`
+            : `ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4674), 31982))`
           : 'NULL'
         const areaExpr = hasGeom
           ? srcSrid === 31982
             ? `ST_Area(ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982)))`
-            : `ST_Area(ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982)))`
+            : `ST_Area(ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4674), 31982)))`
           : 'NULL'
 
         const params: unknown[] = [codigo, camada.id, JSON.stringify(atributos)]
@@ -296,7 +297,7 @@ export async function camadasRoutes(app: FastifyInstance) {
     const features = fc.features
 
     // Detecta se as coordenadas são UTM/EPSG:31982 (valores > 180) ou WGS84
-    let srcSrid = 4326
+    let srcSrid = 4674
     for (const f of features.slice(0, 5)) {
       const coords = f.geometry?.coordinates?.flat(Infinity)
       if (coords?.some((v: number) => Math.abs(v) > 180)) {
@@ -321,12 +322,12 @@ export async function camadasRoutes(app: FastifyInstance) {
         const geomExpr = hasGeom
           ? srcSrid === 31982
             ? `ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982))`
-            : `ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982))`
+            : `ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4674), 31982))`
           : 'NULL'
         const areaExpr = hasGeom
           ? srcSrid === 31982
             ? `ST_Area(ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON($4), 31982)))`
-            : `ST_Area(ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982)))`
+            : `ST_Area(ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4674), 31982)))`
           : 'NULL'
 
         const params: unknown[] = [codigo, camada.id, JSON.stringify(atributos)]
@@ -364,10 +365,10 @@ export async function camadasRoutes(app: FastifyInstance) {
         const codigo = feat.codigo?.trim() || `IMP-${id.slice(0, 6)}-${String(idx + 1).padStart(4, '0')}`
         const hasGeom = feat.geometry && typeof feat.geometry === 'object' && feat.geometry.type
         const geomExpr = hasGeom
-          ? `ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982))`
+          ? `ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4674), 31982))`
           : `NULL`
         const areaExpr = hasGeom
-          ? `ST_Area(ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 31982)))`
+          ? `ST_Area(ST_Force2D(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4674), 31982)))`
           : `NULL`
 
         const params: unknown[] = [codigo, id, JSON.stringify(feat.atributos ?? {})]

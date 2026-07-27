@@ -406,7 +406,7 @@ export function CamadasPanel() {
               </p>
             )}
             <p style={{ margin: '6px 0 0', fontSize: 10, color: '#9ca3af' }}>
-              Temporário · sessão · EPSG:4326 e EPSG:31982 · KML
+              Temporário · sessão · EPSG:4674 e EPSG:31982 · KML
             </p>
           </div>
         </div>
