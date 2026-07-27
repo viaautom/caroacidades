@@ -14,6 +14,7 @@ import { PatrimonioLayer } from './PatrimonioLayer'
 import { BaseLayerSwitcher } from './BaseLayerSwitcher'
 import { BufferToolbar } from './BufferToolbar'
 import { PrintControl } from './PrintControl'
+import { MouseCoordinates } from './MouseCoordinates'
 
 // Tile configs. Google Satélite bloqueia por Referer em produção —
 // usa ESRI World Imagery que é público e não requer API key.
@@ -109,6 +110,7 @@ export function SIGMap({ compact = false }: { compact?: boolean } = {}) {
           {!compact && <LayerControl />}
           {!compact && <CamadasPanel />}
           {!compact && <PrintControl />}
+          {!compact && <MouseCoordinates />}
         </>
       )}
     </div>
