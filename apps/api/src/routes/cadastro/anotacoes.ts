@@ -7,7 +7,7 @@ export default async function anotacoesRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authMiddleware)
 
   app.get('/', async (request, reply) => {
-    const { rows } = await query('SELECT * FROM sigweb.anotacoes ORDER BY created_at DESC')
+    const rows = await query('SELECT * FROM sigweb.anotacoes ORDER BY created_at DESC')
     return rows
   })
 
@@ -19,7 +19,7 @@ export default async function anotacoesRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Tópico é obrigatório' })
     }
 
-    const { rows } = await query(
+    const rows = await query<any>(
       `INSERT INTO sigweb.anotacoes (topico, auth_uid, nome_autor) 
        VALUES ($1, $2, $3) 
        RETURNING *`,
@@ -40,7 +40,7 @@ export default async function anotacoesRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: 'Permissão negada. Apenas Administradores ou Desenvolvedores podem marcar como implementado.' })
     }
 
-    const { rows } = await query(
+    const rows = await query<any>(
       'UPDATE sigweb.anotacoes SET implementado = $1 WHERE id = $2 RETURNING *',
       [implementado, id]
     )
