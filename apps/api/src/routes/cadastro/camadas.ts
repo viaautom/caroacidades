@@ -196,10 +196,11 @@ export async function camadasRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Arquivo ZIP inválido' })
     }
 
-    // Encontra os arquivos .shp e .dbf dentro do zip
-    const shpEntry = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.shp') && !f.dir)
-    const dbfEntry = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.dbf') && !f.dir)
-    const prjEntry = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.prj') && !f.dir)
+    // Encontra os arquivos .shp e .dbf dentro do zip (ignorando metadados do macOS)
+    const validFiles = Object.values(zip.files).filter(f => !f.dir && !f.name.includes('__MACOSX'))
+    const shpEntry = validFiles.find(f => f.name.toLowerCase().endsWith('.shp'))
+    const dbfEntry = validFiles.find(f => f.name.toLowerCase().endsWith('.dbf'))
+    const prjEntry = validFiles.find(f => f.name.toLowerCase().endsWith('.prj'))
 
     if (!shpEntry) return reply.code(400).send({ error: 'Arquivo .shp não encontrado dentro do ZIP' })
 
@@ -240,7 +241,7 @@ export async function camadasRoutes(app: FastifyInstance) {
 
     let features: any[]
     try {
-      const fc = await shapefile.read(shpPath)
+      const fc = await shapefile.read(shpPath, dbfEntry ? dbfPath : undefined)
       features = fc.features
     } catch (err: any) {
       return reply.code(400).send({ error: `Erro ao ler shapefile: ${err.message}` })
