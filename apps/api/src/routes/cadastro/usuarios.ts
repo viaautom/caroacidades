@@ -5,7 +5,7 @@ import { requireRole } from '../../middleware/rbac.middleware'
 import { query } from '../../db/pool'
 import { supabaseAdmin } from '../../services/supabase.service'
 
-const PERFIS = ['ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO'] as const
+const PERFIS = ['DESENVOLVEDOR', 'ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO'] as const
 const perfilSchema = z.enum(PERFIS)
 
 export async function usuariosRoutes(app: FastifyInstance) {

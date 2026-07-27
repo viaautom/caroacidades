@@ -6,6 +6,10 @@ export function requireRole(...roles: UserRole[]) {
     if (!request.user) {
       return reply.code(401).send({ error: 'Não autenticado' })
     }
+    if (request.user.perfil === 'DESENVOLVEDOR') {
+      return // Bypassa qualquer restrição (nível máximo)
+    }
+
     if (!roles.includes(request.user.perfil)) {
       return reply.code(403).send({ error: 'Acesso negado para este perfil' })
     }

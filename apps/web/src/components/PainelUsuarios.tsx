@@ -7,9 +7,10 @@ import toast from 'react-hot-toast'
 
 type Usuario = { id: string; auth_uid?: string; email: string; nome: string; perfil: string; ativo: boolean }
 
-const ROLES = ['ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO'] as const
+const ROLES = ['DESENVOLVEDOR', 'ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO'] as const
 
 const PERFIL_LABEL: Record<string, string> = {
+  DESENVOLVEDOR:     'Desenvolvedor',
   ADMIN:             'Administrador',
   FISCAL_TRIBUTARIO: 'Fiscal Tributário',
   SETOR_PROJETOS:    'Setor de Projetos',
@@ -18,6 +19,7 @@ const PERFIL_LABEL: Record<string, string> = {
 }
 
 const PERFIL_COR: Record<string, { bg: string; color: string }> = {
+  DESENVOLVEDOR:     { bg: '#000000', color: '#ffffff' },
   ADMIN:             { bg: '#eff6ff', color: '#1d4ed8' },
   FISCAL_TRIBUTARIO: { bg: '#f0fdf4', color: '#16a34a' },
   SETOR_PROJETOS:    { bg: '#fdf4ff', color: '#9333ea' },
@@ -75,6 +77,17 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
       toast.success(ativo ? 'Acesso reativado.' : 'Acesso suspenso.')
     } catch {
       toast.error('Erro ao alterar situação')
+    }
+  }
+
+  async function apagarUsuario(uid: string, nome: string) {
+    if (!window.confirm(`Tem certeza que deseja apagar o usuário ${nome}? Esta ação removerá o acesso permanentemente e não pode ser desfeita.`)) return
+    try {
+      await api.delete(`/usuarios/${uid}`)
+      qc.invalidateQueries({ queryKey: ['usuarios'] })
+      toast.success('Usuário apagado com sucesso.')
+    } catch {
+      toast.error('Erro ao apagar usuário')
     }
   }
 
@@ -152,7 +165,7 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
           )}
 
           {/* Botão novo usuário */}
-          {perfil === 'ADMIN' && !criando && (
+          {(perfil === 'ADMIN' || perfil === 'DESENVOLVEDOR') && !criando && (
             <button
               onClick={() => setCriando(true)}
               style={{
@@ -244,7 +257,7 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
                   </span>
                 </div>
 
-                {perfil === 'ADMIN' && (
+                {(perfil === 'ADMIN' || perfil === 'DESENVOLVEDOR') && (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <select
                       defaultValue={u.perfil}
@@ -262,6 +275,16 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
                       }}
                     >
                       {u.ativo !== false ? 'Suspender' : 'Reativar'}
+                    </button>
+                    <button
+                      onClick={() => apagarUsuario(u.auth_uid ?? u.id, u.nome || u.email)}
+                      style={{
+                        padding: '5px 10px', fontSize: 11, borderRadius: 6, border: '1px solid #fca5a5', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap',
+                        background: '#fef2f2', color: '#b91c1c',
+                      }}
+                      title="Excluir permanentemente"
+                    >
+                      Apagar
                     </button>
                   </div>
                 )}

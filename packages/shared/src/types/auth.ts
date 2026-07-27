@@ -1,4 +1,5 @@
 export type UserRole =
+  | 'DESENVOLVEDOR'
   | 'ADMIN'
   | 'FISCAL_TRIBUTARIO'
   | 'SETOR_PROJETOS'
