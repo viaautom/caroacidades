@@ -207,18 +207,25 @@ export async function camadasRoutes(app: FastifyInstance) {
     if (prjEntry) {
       try {
         const prjText = (await prjEntry.async('string')).toUpperCase()
-        const epsgMatch = prjText.match(/AUTHORITY\["EPSG","(\d+)"\]\]$/)
-        if (epsgMatch && epsgMatch[1]) {
-          prjSrid = parseInt(epsgMatch[1], 10)
-        } else if (prjText.includes('UTM') || prjText.includes('TRANSVERSE_MERCATOR')) {
-          const cmMatch = prjText.match(/PARAMETER\["CENTRAL_MERIDIAN",([^\]]+)\]/)
-          const cm = cmMatch ? parseFloat(cmMatch[1]) : null
-          if (cm === -57) prjSrid = 31981
-          else if (cm === -51) prjSrid = 31982
-          else if (cm === -45) prjSrid = 31983
-          else if (cm === -63) prjSrid = 31980
-        } else if (prjText.includes('SIRGAS') && prjText.includes('GEOGCS') && !prjText.includes('PROJCS')) {
-          prjSrid = 4674
+        const epsgMatch = prjText.match(/AUTHORITY\["EPSG","(\d+)"\]/g)
+        if (epsgMatch && epsgMatch.length > 0) {
+          const lastEpsg = epsgMatch[epsgMatch.length - 1].match(/\d+/)
+          if (lastEpsg) prjSrid = parseInt(lastEpsg[0], 10)
+        } 
+        
+        if (!prjSrid) {
+          if (prjText.includes('WEB_MERCATOR') || prjText.includes('PSEUDO_MERCATOR') || prjText.includes('3857')) {
+            prjSrid = 3857
+          } else if (prjText.includes('UTM') || prjText.includes('TRANSVERSE_MERCATOR')) {
+            const cmMatch = prjText.match(/PARAMETER\["CENTRAL_MERIDIAN",([^\]]+)\]/)
+            const cm = cmMatch ? parseFloat(cmMatch[1]) : null
+            if (cm === -57) prjSrid = 31981
+            else if (cm === -51) prjSrid = 31982
+            else if (cm === -45) prjSrid = 31983
+            else if (cm === -63) prjSrid = 31980
+          } else if (prjText.includes('SIRGAS') && prjText.includes('GEOGCS') && !prjText.includes('PROJCS')) {
+            prjSrid = 4674
+          }
         }
       } catch (e) { /* ignore prj parse errors */ }
     }
