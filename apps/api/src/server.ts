@@ -6,6 +6,8 @@ import multipart from '@fastify/multipart'
 import staticFiles from '@fastify/static'
 import path from 'path'
 import { parcelasRoutes, MIGRATION_PARCELAS_GEOM } from './routes/cadastro/parcelas'
+import configuracoesRoutes from './routes/admin/configuracoes'
+import anotacoesRoutes from './routes/cadastro/anotacoes'
 import { edificacoesRoutes } from './routes/cadastro/edificacoes'
 import { bairrosRoutes } from './routes/cadastro/bairros'
 import { quadrasRoutes } from './routes/cadastro/quadras'
@@ -97,6 +99,7 @@ async function bootstrap() {
   await app.register(permissoesRoutes,  { prefix })
   await app.register(sinterRoutes,      { prefix })
   await app.register(devRoutes,         { prefix })
+  await app.register(anotacoesRoutes,   { prefix: `${prefix}/anotacoes` })
   await app.register(configuracoesRoutes, { prefix: `${prefix}/admin/configuracoes` })
 
   // Auto-cadastro de cidadão (req 11): qualquer pessoa pode criar sua própria

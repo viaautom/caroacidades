@@ -2065,6 +2065,125 @@ function TabDesenvolvedor({ onLock }: { onLock: () => void }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// Tab: Anotações
+// ══════════════════════════════════════════════════════════════════════════════
+type Anotacao = {
+  id: string
+  topico: string
+  auth_uid: string
+  nome_autor: string
+  implementado: boolean
+  created_at: string
+}
+
+function TabAnotacoes() {
+  const qc = useQueryClient()
+  const { user } = useAuthStore()
+  const [novoTopico, setNovoTopico] = useState('')
+  const [criando, setCriando] = useState(false)
+
+  const { data: anotacoes = [], isLoading } = useQuery<Anotacao[]>({
+    queryKey: ['anotacoes'],
+    queryFn: () => api.get('/anotacoes').then(r => r.data),
+  })
+
+  const criar = useMutation({
+    mutationFn: () => api.post('/anotacoes', { topico: novoTopico }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['anotacoes'] })
+      setNovoTopico('')
+      setCriando(false)
+      toast.success('Anotação criada!')
+    },
+    onError: () => toast.error('Erro ao criar anotação'),
+  })
+
+  const alternarStatus = useMutation({
+    mutationFn: (a: Anotacao) => api.patch(`/anotacoes/${a.id}`, { implementado: !a.implementado }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['anotacoes'] })
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error ?? 'Erro ao alterar status'),
+  })
+
+  const podeMarcar = user?.perfil === 'ADMIN' || user?.perfil === 'DESENVOLVEDOR'
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ margin: 0, color: '#1e3a5f', fontSize: 16 }}>Anotações e Tarefas</h3>
+        <button style={btn()} onClick={() => setCriando(p => !p)}>+ Novo Tópico</button>
+      </div>
+
+      {criando && (
+        <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>O que precisa ser feito ou implementado? *</label>
+            <textarea
+              style={{ ...input, height: 80, resize: 'vertical' }}
+              value={novoTopico}
+              onChange={e => setNovoTopico(e.target.value)}
+              placeholder="Descreva a tarefa, bug ou nova funcionalidade desejada..."
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button style={outlineBtn()} onClick={() => setCriando(false)}>Cancelar</button>
+            <button style={btn()} disabled={!novoTopico.trim() || criar.isPending} onClick={() => criar.mutate()}>
+              {criar.isPending ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isLoading && <p style={{ color: '#6b7280', fontSize: 13 }}>Carregando anotações...</p>}
+
+      {anotacoes.map(a => (
+        <div key={a.id} style={{ ...card, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <div style={{ marginTop: 2 }}>
+            <input
+              type="checkbox"
+              checked={a.implementado}
+              disabled={!podeMarcar || alternarStatus.isPending}
+              onChange={() => alternarStatus.mutate(a)}
+              style={{ width: 18, height: 18, cursor: podeMarcar ? 'pointer' : 'not-allowed' }}
+              title={!podeMarcar ? 'Apenas Administradores ou Desenvolvedores podem marcar como concluído' : 'Marcar como concluído'}
+            />
+          </div>
+          <div style={{ flex: 1, opacity: a.implementado ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+            <div style={{ 
+              fontWeight: 500, 
+              fontSize: 14, 
+              color: a.implementado ? '#6b7280' : '#1e3a5f',
+              textDecoration: a.implementado ? 'line-through' : 'none',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {a.topico}
+            </div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span>👤 {a.nome_autor}</span>
+              <span>•</span>
+              <span>📅 {new Date(a.created_at).toLocaleString('pt-BR')}</span>
+              {a.implementado && (
+                <>
+                  <span>•</span>
+                  <span style={{ color: '#059669', fontWeight: 600 }}>✓ Implementado</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {!isLoading && anotacoes.length === 0 && !criando && (
+        <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: 32 }}>
+          Nenhuma anotação criada até o momento.
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Página principal
 // ══════════════════════════════════════════════════════════════════════════════
 const TABS = [
@@ -2075,6 +2194,7 @@ const TABS = [
   { id: 'imagens360', label: 'Imagens 360°' },
   { id: 'banco',     label: 'Banco de Dados' },
   { id: 'usuarios',  label: 'Usuários' },
+  { id: 'anotacoes', label: '📝 Anotações' },
 ]
 
 export function GestaoSIGPage({ onPreview }: { onPreview?: (p: PerfilKey) => void } = {}) {
@@ -2178,6 +2298,7 @@ export function GestaoSIGPage({ onPreview }: { onPreview?: (p: PerfilKey) => voi
         {tab === 'imagens360' && <TabImagens360 />}
         {tab === 'banco'      && <TabBancoDados />}
         {tab === 'usuarios'   && <TabUsuarios onPreview={onPreview} />}
+        {tab === 'anotacoes'  && <TabAnotacoes />}
         {tab === 'desenvolvedor' && isDevUnlocked && <TabDesenvolvedor onLock={handleLock} />}
       </div>
 
