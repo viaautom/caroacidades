@@ -2078,7 +2078,7 @@ type Anotacao = {
 
 function TabAnotacoes() {
   const qc = useQueryClient()
-  const { user } = useAuthStore()
+  const { perfil } = useAuthStore()
   const [novoTopico, setNovoTopico] = useState('')
   const [criando, setCriando] = useState(false)
 
@@ -2106,7 +2106,7 @@ function TabAnotacoes() {
     onError: (err: any) => toast.error(err.response?.data?.error ?? 'Erro ao alterar status'),
   })
 
-  const podeMarcar = user?.perfil === 'ADMIN' || user?.perfil === 'DESENVOLVEDOR'
+  const podeMarcar = perfil === 'ADMIN' || perfil === 'DESENVOLVEDOR'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
