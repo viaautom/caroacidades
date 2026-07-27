@@ -179,9 +179,9 @@ export async function camadasRoutes(app: FastifyInstance) {
     const { join } = await import('path')
     const { writeFileSync, unlinkSync, existsSync } = await import('fs')
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const JSZip = require('jszip') as { loadAsync(data: Buffer): Promise<{ files: Record<string, { name: string; dir: boolean; async(type: string): Promise<ArrayBuffer> }> }> }
+    const JSZip = require('jszip') as { loadAsync(data: Buffer): Promise<{ files: Record<string, { name: string; dir: boolean; async(type: string): Promise<any> }> }> }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const shapefile = require('shapefile') as { read(path: string): Promise<{ features: any[] }> }
+    const shapefile = require('shapefile') as { read(shp: string, dbf?: string): Promise<{ features: any[] }> }
 
     const data = await request.file()
     if (!data) return reply.code(400).send({ error: 'Nenhum arquivo enviado' })
