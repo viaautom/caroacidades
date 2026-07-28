@@ -65,6 +65,18 @@ export async function usuariosRoutes(app: FastifyInstance) {
          FROM sigweb.usuarios
          ORDER BY nome`
       )
+      
+      if (rows.length === 0) {
+        let authCount = -1;
+        try {
+          const { data } = await supabaseAdmin.auth.admin.listUsers();
+          authCount = data?.users?.length || 0;
+        } catch (e: any) {
+          return reply.code(500).send({ error: `DEBUG: Erro no Sync Supabase Auth! ${e?.message}` })
+        }
+        return reply.code(500).send({ error: `DEBUG: A tabela sigweb.usuarios está VAZIA. Sync falhou silenciosamente? Supabase Auth tem ${authCount} usuários.` })
+      }
+
       return rows.map(u => ({
         id: u.firebase_uid,
         auth_uid: u.firebase_uid,

@@ -897,7 +897,7 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
   const [salvando, setSalvando] = useState(false)
   const qc = useQueryClient()
 
-  const { data: usuarios = [], isLoading } = useQuery<Usuario[]>({
+  const { data: usuarios = [], isLoading, error } = useQuery<Usuario[]>({
     queryKey: ['usuarios'],
     queryFn: () => api.get('/usuarios').then(r => r.data),
   })
@@ -1110,9 +1110,15 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
         </div>
       )}
 
-      {!isLoading && usuarios.length === 0 && (
+      {!isLoading && !error && usuarios.length === 0 && (
         <p style={{ color: '#9ca3af', textAlign: 'center', padding: 32, fontSize: 13 }}>
           Nenhum usuário cadastrado. Clique em "Novo Usuário" para começar.
+        </p>
+      )}
+
+      {error && (
+        <p style={{ color: '#ef4444', textAlign: 'center', padding: 32, fontSize: 14, fontWeight: 'bold' }}>
+          {(error as any)?.response?.data?.error ?? (error as any)?.message ?? 'Erro desconhecido ao carregar usuários'}
         </p>
       )}
 
