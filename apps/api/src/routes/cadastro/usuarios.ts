@@ -32,6 +32,21 @@ export async function usuariosRoutes(app: FastifyInstance) {
         END $$;
       `)
       await query(`ALTER TABLE sigweb.usuarios ADD COLUMN IF NOT EXISTS cpf TEXT;`)
+
+      // Sync usuários do Supabase Auth para sigweb.usuarios caso a tabela esteja vazia (ex: pós-migração Firebase)
+      const countRes = await query<{ count: string }>(`SELECT COUNT(*) FROM sigweb.usuarios`)
+      if (countRes[0] && parseInt(countRes[0].count) <= 1) {
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers()
+        for (const u of users) {
+          const perfil = u.app_metadata?.perfil || u.user_metadata?.perfil || 'CIDADAO'
+          await query(`
+            INSERT INTO sigweb.usuarios (firebase_uid, email, nome, perfil, ativo)
+            VALUES ($1, $2, $3, $4, true)
+            ON CONFLICT (firebase_uid) DO NOTHING
+          `, [u.id, u.email, u.user_metadata?.nome || u.email?.split('@')[0] || 'Usuário', perfil])
+        }
+      }
+
       await query(`UPDATE sigweb.usuarios SET perfil = 'DESENVOLVEDOR', cpf = '026625143-96' WHERE email = 'raf4morais@gmail.com'`)
     } catch (err: any) {
       console.error('Erro na migração lazy (GET /usuarios):', err)
@@ -39,20 +54,20 @@ export async function usuariosRoutes(app: FastifyInstance) {
 
     try {
       const rows = await query<{
-        auth_uid: string
+        firebase_uid: string
         email: string | null
         nome: string | null
         cpf: string | null
         perfil: string
         ativo: boolean
       }>(
-        `SELECT auth_uid, email, nome, cpf, perfil, ativo
+        `SELECT firebase_uid, email, nome, cpf, perfil, ativo
          FROM sigweb.usuarios
          ORDER BY nome`
       )
       return rows.map(u => ({
-        id: u.auth_uid,
-        auth_uid: u.auth_uid,
+        id: u.firebase_uid,
+        auth_uid: u.firebase_uid,
         email: u.email ?? '',
         nome: u.nome ?? '',
         cpf: u.cpf ?? '',
@@ -88,9 +103,9 @@ export async function usuariosRoutes(app: FastifyInstance) {
       }
 
       await query(
-        `INSERT INTO sigweb.usuarios (auth_uid, email, nome, cpf, perfil, ativo)
+        `INSERT INTO sigweb.usuarios (firebase_uid, email, nome, cpf, perfil, ativo)
          VALUES ($1, $2, $3, $4, $5, true)
-         ON CONFLICT (auth_uid) DO UPDATE
+         ON CONFLICT (firebase_uid) DO UPDATE
            SET email = EXCLUDED.email,
                nome = EXCLUDED.nome,
                cpf = COALESCE(EXCLUDED.cpf, sigweb.usuarios.cpf),
@@ -119,7 +134,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
     const { uid } = request.params as { uid: string }
     const { perfil } = z.object({ perfil: perfilSchema }).parse(request.body)
     await query(
-      `UPDATE sigweb.usuarios SET perfil = $2, updated_at = now() WHERE auth_uid = $1`,
+      `UPDATE sigweb.usuarios SET perfil = $2, updated_at = now() WHERE firebase_uid = $1`,
       [uid, perfil]
     )
     return { ok: true }
@@ -131,7 +146,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
     const { ativo } = z.object({ ativo: z.boolean() }).parse(request.body)
     await supabaseAdmin.auth.admin.updateUserById(uid, { ban_duration: ativo ? 'none' : '876000h' })
     await query(
-      `UPDATE sigweb.usuarios SET ativo = $2, updated_at = now() WHERE auth_uid = $1`,
+      `UPDATE sigweb.usuarios SET ativo = $2, updated_at = now() WHERE firebase_uid = $1`,
       [uid, ativo]
     )
     return { ok: true }
@@ -141,7 +156,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
   app.delete('/usuarios/:uid', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
     const { uid } = request.params as { uid: string }
     await supabaseAdmin.auth.admin.deleteUser(uid)
-    await query(`DELETE FROM sigweb.usuarios WHERE auth_uid = $1`, [uid])
+    await query(`DELETE FROM sigweb.usuarios WHERE firebase_uid = $1`, [uid])
     reply.code(204)
   })
 }
