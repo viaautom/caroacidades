@@ -19,18 +19,6 @@ export async function usuariosRoutes(app: FastifyInstance) {
   app.get('/usuarios', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
     // Migração de segurança
     try {
-      // Remover constraint de check do perfil caso exista para aceitar DESENVOLVEDOR
-      await query(`
-        DO $$ 
-        DECLARE 
-          c_name TEXT; 
-        BEGIN 
-          SELECT conname INTO c_name FROM pg_constraint WHERE conrelid = 'sigweb.usuarios'::regclass AND contype = 'c';
-          IF c_name IS NOT NULL THEN
-            EXECUTE 'ALTER TABLE sigweb.usuarios DROP CONSTRAINT ' || c_name;
-          END IF;
-        END $$;
-      `)
       await query(`ALTER TABLE sigweb.usuarios ADD COLUMN IF NOT EXISTS cpf TEXT;`)
 
       // Sync usuários do Supabase Auth para sigweb.usuarios caso a tabela esteja vazia (ex: pós-migração Firebase)
