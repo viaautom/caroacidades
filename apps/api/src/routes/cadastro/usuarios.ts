@@ -17,9 +17,13 @@ export async function usuariosRoutes(app: FastifyInstance) {
 
   // Listar usuários do banco de dados
   app.get('/usuarios', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
-    // Migração de segurança
     try {
       await query(`ALTER TABLE sigweb.usuarios ADD COLUMN IF NOT EXISTS cpf TEXT;`)
+    } catch (err: any) {
+      return reply.code(500).send({ error: `DEBUG ALTER TABLE: ${err?.message}` })
+    }
+    
+    try {
 
       // Sync usuários do Supabase Auth para sigweb.usuarios caso a tabela esteja vazia (ex: pós-migração Firebase)
       const countRes = await query<{ count: string }>(`SELECT COUNT(*) FROM sigweb.usuarios`)
