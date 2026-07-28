@@ -273,11 +273,29 @@ export async function parcelasRoutes(app: FastifyInstance) {
   // Deletar parcela
   app.delete(
     '/parcelas/:id',
-    { preHandler: requireRole('ADMIN') },
+    { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') },
     async (request, reply) => {
       const { id } = request.params as { id: string }
       await query(`DELETE FROM sigweb.parcelas WHERE id = $1`, [id])
       reply.code(204)
+    }
+  )
+
+  // Deletar múltiplas parcelas em lote (Bulk Delete)
+  app.post(
+    '/parcelas/bulk-delete',
+    { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') },
+    async (request, reply) => {
+      const { parcelaIds } = request.body as { parcelaIds: string[] }
+      if (!Array.isArray(parcelaIds) || parcelaIds.length === 0) {
+        return reply.code(400).send({ error: 'Lista de parcelas inválida' })
+      }
+      
+      // Construir array params ex: $1, $2, $3
+      const placeholders = parcelaIds.map((_, i) => `$${i + 1}`).join(', ')
+      await query(`DELETE FROM sigweb.parcelas WHERE id IN (${placeholders})`, parcelaIds)
+      
+      return { ok: true, deletedCount: parcelaIds.length }
     }
   )
 

@@ -296,7 +296,7 @@ export async function camadasRoutes(app: FastifyInstance) {
   })
 
   // Importar Camada (GeoJSON ou KML direto)
-  app.post('/camadas/upload-geojson', { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO') }, async (request, reply) => {
+  app.post('/camadas/upload-geojson', { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO', 'DESENVOLVEDOR') }, async (request, reply) => {
     const data = await request.file()
     if (!data) return reply.code(400).send({ error: 'Nenhum arquivo enviado' })
 

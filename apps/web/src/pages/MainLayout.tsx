@@ -168,6 +168,12 @@ export function MainLayout() {
     return () => window.removeEventListener('keydown', handler)
   }, [previewPerfil, setPreviewPerfil])
 
+  useEffect(() => {
+    const handler = () => setPainelAberto(false)
+    window.addEventListener('close-painel-gestao', handler)
+    return () => window.removeEventListener('close-painel-gestao', handler)
+  }, [])
+
   const effectivePerfil = (previewPerfil ?? perfil) as string
 
   const visibleItems = NAV_ITEMS.filter(item =>

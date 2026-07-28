@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import proj4 from 'proj4'
 import { useMapStore } from '../../store/map.store'
+import { useAuthStore } from '../../store/auth.store'
+import { useQueryClient } from '@tanstack/react-query'
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
 proj4.defs('EPSG:31982', '+proj=utm +zone=22 +south +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs')
 
@@ -143,6 +147,8 @@ function buildLayer(features: GeoJSON.Feature[], cor: string, map: L.Map): L.Geo
 
 export function CamadasPanel() {
   const { map, activeLayers, toggleLayer, bairros, zoomToBairro } = useMapStore()
+  const { perfil } = useAuthStore()
+  const qc = useQueryClient()
   const [aberta, setAberta] = useState(false)
   const [camadas, setCamadas] = useState<CamadaCarregada[]>([])
   const [carregando, setCarregando] = useState(false)
@@ -192,43 +198,68 @@ export function CamadasPanel() {
     setErro('')
 
     try {
-      let features: GeoJSON.Feature[]
+      if (perfil === 'DESENVOLVEDOR') {
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        let endpoint = ''
+        if (file.name.toLowerCase().endsWith('.zip')) {
+          endpoint = '/camadas/upload-shp'
+        } else if (file.name.toLowerCase().endsWith('.kml') || file.name.toLowerCase().endsWith('.geojson')) {
+          endpoint = '/camadas/upload-geojson'
+          formData.append('nome', file.name.replace(/\.(kml|geojson)$/i, ''))
+        } else {
+          setErro('Formato inválido. Use .zip, .kml ou .geojson')
+          setCarregando(false)
+          return
+        }
 
-      if (file.name.toLowerCase().endsWith('.kml')) {
-        const text = await file.text()
-        features = kmlToFeatures(text)
+        await api.post(endpoint, formData, {
+          headers: { 'Content-Type': 'multipart/form-data', 'x-layer-name': file.name.replace(/\.(zip|kml|geojson)$/i, '') }
+        })
+        
+        qc.invalidateQueries({ queryKey: ['camadas'] })
+        toast.success('Camada enviada com sucesso para Gestão SIG e Camadas Auxiliares!')
+        
       } else {
-        const shp = (await import('shpjs')).default
-        const buf = await file.arrayBuffer()
-        const geojson = await shp(buf)
-        let raw: any[] = Array.isArray(geojson)
-          ? geojson.flatMap((g: any) => g.features ?? [])
-          : (geojson as any).features ?? []
-        if (precisaReprojetar(raw)) raw = reprojetarFeatures(raw)
-        features = raw
+        let features: GeoJSON.Feature[]
+
+        if (file.name.toLowerCase().endsWith('.kml')) {
+          const text = await file.text()
+          features = kmlToFeatures(text)
+        } else {
+          const shp = (await import('shpjs')).default
+          const buf = await file.arrayBuffer()
+          const geojson = await shp(buf)
+          let raw: any[] = Array.isArray(geojson)
+            ? geojson.flatMap((g: any) => g.features ?? [])
+            : (geojson as any).features ?? []
+          if (precisaReprojetar(raw)) raw = reprojetarFeatures(raw)
+          features = raw
+        }
+
+        if (!features.length) { setErro('Arquivo sem feições geométricas.'); return }
+
+        const cor = proximaCor()
+        const layer = buildLayer(features as GeoJSON.Feature[], cor, map)
+
+        const id = crypto.randomUUID()
+        const nome = file.name.replace(/\.(zip|shp)$/i, '')
+
+        const cached = lerCache()
+        cached.push({ id, nome, cor, features: features as GeoJSON.Feature[] })
+        salvarCache(cached)
+
+        map.fitBounds(layer.getBounds(), { padding: [20, 20] })
+        setCamadas(prev => [...prev, { id, nome, cor, visivel: true, layer, contagem: features.length }])
       }
-
-      if (!features.length) { setErro('Arquivo sem feições geométricas.'); return }
-
-      const cor = proximaCor()
-      const layer = buildLayer(features as GeoJSON.Feature[], cor, map)
-
-      const id = crypto.randomUUID()
-      const nome = file.name.replace(/\.(zip|shp)$/i, '')
-
-      const cached = lerCache()
-      cached.push({ id, nome, cor, features: features as GeoJSON.Feature[] })
-      salvarCache(cached)
-
-      map.fitBounds(layer.getBounds(), { padding: [20, 20] })
-      setCamadas(prev => [...prev, { id, nome, cor, visivel: true, layer, contagem: features.length }])
     } catch (e: any) {
-      setErro('Erro ao carregar: ' + (e?.message ?? 'formato inválido'))
+      setErro('Erro ao carregar: ' + (e?.response?.data?.error ?? e?.message ?? 'formato inválido'))
     } finally {
       setCarregando(false)
       if (inputRef.current) inputRef.current.value = ''
     }
-  }, [map])
+  }, [map, perfil, qc])
 
   function toggleVisivel(id: string) {
     setCamadas(prev => prev.map(c => {
