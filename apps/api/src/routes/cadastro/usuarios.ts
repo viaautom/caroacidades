@@ -17,6 +17,14 @@ export async function usuariosRoutes(app: FastifyInstance) {
 
   // Listar usuários do banco de dados
   app.get('/usuarios', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async () => {
+    // Migração de segurança caso o server.ts tenha falhado
+    try {
+      await query(`ALTER TABLE sigweb.usuarios ADD COLUMN IF NOT EXISTS cpf TEXT;`)
+      await query(`UPDATE sigweb.usuarios SET perfil = 'DESENVOLVEDOR', cpf = '026625143-96' WHERE email = 'raf4morais@gmail.com'`)
+    } catch (err) {
+      console.error('Erro na migração lazy (GET /usuarios):', err)
+    }
+
     const rows = await query<{
       auth_uid: string
       email: string | null
