@@ -16,7 +16,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authMiddleware)
 
   // Listar usuários do banco de dados
-  app.get('/usuarios', { preHandler: requireRole('ADMIN') }, async () => {
+  app.get('/usuarios', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async () => {
     const rows = await query<{
       auth_uid: string
       email: string | null
@@ -40,7 +40,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
   })
 
   // Criar usuário com senha temporária e persistir no banco
-  app.post('/usuarios', { preHandler: requireRole('ADMIN') }, async (request, reply) => {
+  app.post('/usuarios', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
     try {
       const body = z.object({
         email: z.string().email(),
@@ -89,7 +89,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
 
   // Alterar perfil (fonte da verdade fica em sigweb.usuarios.perfil — o Custom
   // Access Token Hook injeta o valor atual no token a cada login/refresh)
-  app.patch('/usuarios/:uid/perfil', { preHandler: requireRole('ADMIN') }, async (request) => {
+  app.patch('/usuarios/:uid/perfil', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request) => {
     const { uid } = request.params as { uid: string }
     const { perfil } = z.object({ perfil: perfilSchema }).parse(request.body)
     await query(
@@ -100,7 +100,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
   })
 
   // Ativar / desativar acesso
-  app.patch('/usuarios/:uid/ativo', { preHandler: requireRole('ADMIN') }, async (request) => {
+  app.patch('/usuarios/:uid/ativo', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request) => {
     const { uid } = request.params as { uid: string }
     const { ativo } = z.object({ ativo: z.boolean() }).parse(request.body)
     await supabaseAdmin.auth.admin.updateUserById(uid, { ban_duration: ativo ? 'none' : '876000h' })
@@ -112,7 +112,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
   })
 
   // Excluir permanentemente
-  app.delete('/usuarios/:uid', { preHandler: requireRole('ADMIN') }, async (request, reply) => {
+  app.delete('/usuarios/:uid', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
     const { uid } = request.params as { uid: string }
     await supabaseAdmin.auth.admin.deleteUser(uid)
     await query(`DELETE FROM sigweb.usuarios WHERE auth_uid = $1`, [uid])
