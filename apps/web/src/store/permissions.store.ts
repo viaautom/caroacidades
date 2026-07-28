@@ -66,6 +66,7 @@ export const usePermissionsStore = create<PermissionsState>((set, get) => ({
   setPreviewPerfil: (perfil) => set({ previewPerfil: perfil }),
 
   isHabilitado: (moduloId, perfil) => {
+    if (perfil === 'DESENVOLVEDOR') return true
     const { overrides } = get()
     if (overrides[moduloId]?.[perfil] !== undefined) return overrides[moduloId][perfil]
     const modulo = MODULOS.find(m => m.id === moduloId)
