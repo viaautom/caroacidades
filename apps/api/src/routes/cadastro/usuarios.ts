@@ -16,35 +16,53 @@ export async function usuariosRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authMiddleware)
 
   // Listar usuários do banco de dados
-  app.get('/usuarios', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async () => {
-    // Migração de segurança caso o server.ts tenha falhado
+  app.get('/usuarios', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
+    // Migração de segurança
     try {
+      // Remover constraint de check do perfil caso exista para aceitar DESENVOLVEDOR
+      await query(`
+        DO $$ 
+        DECLARE 
+          c_name TEXT; 
+        BEGIN 
+          SELECT conname INTO c_name FROM pg_constraint WHERE conrelid = 'sigweb.usuarios'::regclass AND contype = 'c';
+          IF c_name IS NOT NULL THEN
+            EXECUTE 'ALTER TABLE sigweb.usuarios DROP CONSTRAINT ' || c_name;
+          END IF;
+        END $$;
+      `)
       await query(`ALTER TABLE sigweb.usuarios ADD COLUMN IF NOT EXISTS cpf TEXT;`)
       await query(`UPDATE sigweb.usuarios SET perfil = 'DESENVOLVEDOR', cpf = '026625143-96' WHERE email = 'raf4morais@gmail.com'`)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro na migração lazy (GET /usuarios):', err)
     }
 
-    const rows = await query<{
-      auth_uid: string
-      email: string | null
-      nome: string | null
-      cpf: string | null
-      perfil: string
-      ativo: boolean
-    }>(
-      `SELECT auth_uid, email, nome, cpf, perfil, ativo
-       FROM sigweb.usuarios
-       ORDER BY nome`)
-    return rows.map(u => ({
-      id: u.auth_uid,
-      auth_uid: u.auth_uid,
-      email: u.email ?? '',
-      nome: u.nome ?? '',
-      cpf: u.cpf ?? '',
-      perfil: u.perfil,
-      ativo: u.ativo,
-    }))
+    try {
+      const rows = await query<{
+        auth_uid: string
+        email: string | null
+        nome: string | null
+        cpf: string | null
+        perfil: string
+        ativo: boolean
+      }>(
+        `SELECT auth_uid, email, nome, cpf, perfil, ativo
+         FROM sigweb.usuarios
+         ORDER BY nome`
+      )
+      return rows.map(u => ({
+        id: u.auth_uid,
+        auth_uid: u.auth_uid,
+        email: u.email ?? '',
+        nome: u.nome ?? '',
+        cpf: u.cpf ?? '',
+        perfil: u.perfil,
+        ativo: u.ativo,
+      }))
+    } catch (err: any) {
+      console.error('Erro ao listar usuários:', err)
+      return reply.code(500).send({ error: \`Erro banco de dados: \${err?.message}\` })
+    }
   })
 
   // Criar usuário com senha temporária e persistir no banco
