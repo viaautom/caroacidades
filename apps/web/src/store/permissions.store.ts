@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type PerfilKey = 'ADMIN' | 'FISCAL_TRIBUTARIO' | 'SETOR_PROJETOS' | 'FISCAL_CAMPO' | 'CIDADAO'
+export type PerfilKey = 'DESENVOLVEDOR' | 'ADMIN' | 'FISCAL_TRIBUTARIO' | 'SETOR_PROJETOS' | 'FISCAL_CAMPO' | 'CIDADAO'
 
 export type Modulo = {
   id: string
