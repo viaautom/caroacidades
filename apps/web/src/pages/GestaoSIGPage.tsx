@@ -1013,11 +1013,6 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
                 value={novoForm.nome} onChange={e => setNovoForm(f => ({ ...f, nome: e.target.value }))} />
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 3 }}>CPF (Opcional)</label>
-              <input style={input} placeholder="000.000.000-00"
-                value={novoForm.cpf} onChange={e => setNovoForm(f => ({ ...f, cpf: e.target.value }))} />
-            </div>
-            <div>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 3 }}>Senha temporária *</label>
               <input style={input} type="password" placeholder="Mínimo 6 caracteres"
                 value={novoForm.senha} onChange={e => setNovoForm(f => ({ ...f, senha: e.target.value }))} />
