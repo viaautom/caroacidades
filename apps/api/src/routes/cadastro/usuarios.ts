@@ -8,6 +8,10 @@ import { supabaseAdmin } from '../../services/supabase.service'
 const PERFIS = ['DESENVOLVEDOR', 'ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO'] as const
 const perfilSchema = z.enum(PERFIS)
 
+export const MIGRATION_USUARIOS = `
+  ALTER TABLE sigweb.usuarios ADD COLUMN IF NOT EXISTS cpf TEXT;
+`
+
 export async function usuariosRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authMiddleware)
 
@@ -17,10 +21,11 @@ export async function usuariosRoutes(app: FastifyInstance) {
       auth_uid: string
       email: string | null
       nome: string | null
+      cpf: string | null
       perfil: string
       ativo: boolean
     }>(
-      `SELECT auth_uid, email, nome, perfil, ativo
+      `SELECT auth_uid, email, nome, cpf, perfil, ativo
        FROM sigweb.usuarios
        ORDER BY nome`)
     return rows.map(u => ({
@@ -28,6 +33,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
       auth_uid: u.auth_uid,
       email: u.email ?? '',
       nome: u.nome ?? '',
+      cpf: u.cpf ?? '',
       perfil: u.perfil,
       ativo: u.ativo,
     }))
@@ -39,6 +45,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
       const body = z.object({
         email: z.string().email(),
         nome: z.string().min(2),
+        cpf: z.string().optional(),
         senha: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
         perfil: perfilSchema.default('FISCAL_CAMPO'),
       }).parse(request.body)
@@ -55,15 +62,16 @@ export async function usuariosRoutes(app: FastifyInstance) {
       }
 
       await query(
-        `INSERT INTO sigweb.usuarios (auth_uid, email, nome, perfil, ativo)
-         VALUES ($1, $2, $3, $4, true)
+        `INSERT INTO sigweb.usuarios (auth_uid, email, nome, cpf, perfil, ativo)
+         VALUES ($1, $2, $3, $4, $5, true)
          ON CONFLICT (auth_uid) DO UPDATE
            SET email = EXCLUDED.email,
                nome = EXCLUDED.nome,
+               cpf = COALESCE(EXCLUDED.cpf, sigweb.usuarios.cpf),
                perfil = EXCLUDED.perfil,
                ativo = true,
                updated_at = now()`,
-        [data.user.id, body.email, body.nome, body.perfil]
+        [data.user.id, body.email, body.nome, body.cpf, body.perfil]
       )
 
       reply.code(201)

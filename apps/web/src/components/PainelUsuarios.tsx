@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 
-type Usuario = { id: string; auth_uid?: string; email: string; nome: string; perfil: string; ativo: boolean }
+type Usuario = { id: string; auth_uid?: string; email: string; nome: string; cpf?: string; perfil: string; ativo: boolean }
 
 const ROLES = ['DESENVOLVEDOR', 'ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO'] as const
 
@@ -33,7 +33,7 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
   const [bootstrapping, setBootstrapping] = useState(false)
   const [criando, setCriando] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [form, setForm] = useState({ email: '', nome: '', senha: '', perfil: 'FISCAL_CAMPO' })
+  const [form, setForm] = useState({ email: '', nome: '', cpf: '', senha: '', perfil: 'FISCAL_CAMPO' })
 
   const { data: usuarios = [], isLoading } = useQuery<Usuario[]>({
     queryKey: ['usuarios'],
@@ -97,7 +97,7 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
     try {
       await api.post('/usuarios', form)
       toast.success(`Usuário ${form.email} criado.`)
-      setForm({ email: '', nome: '', senha: '', perfil: 'FISCAL_CAMPO' })
+      setForm({ email: '', nome: '', cpf: '', senha: '', perfil: 'FISCAL_CAMPO' })
       setCriando(false)
       qc.invalidateQueries({ queryKey: ['usuarios'] })
     } catch (e: any) {
@@ -196,6 +196,13 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
                     style={inputSt}
                   />
                 </Field>
+                <Field label="CPF">
+                  <input
+                    placeholder="000.000.000-00"
+                    value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))}
+                    style={inputSt}
+                  />
+                </Field>
                 <Field label="Senha temporária *">
                   <input
                     type="password" placeholder="Mínimo 6 caracteres"
@@ -247,7 +254,9 @@ export function PainelUsuarios({ onClose }: { onClose: () => void }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <div>
                     <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111' }}>{u.nome || '—'}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>{u.email}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>
+                      {u.email} {u.cpf ? `| CPF: ${u.cpf}` : ''}
+                    </p>
                   </div>
                   <span style={{
                     background: cor.bg, color: cor.color,
