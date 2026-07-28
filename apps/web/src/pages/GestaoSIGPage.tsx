@@ -11,6 +11,8 @@ import { useAuthStore } from '../store/auth.store'
 import { supabase, STORAGE_BUCKET } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
+import { ParcelasViewer } from '../components/ParcelasViewer'
+
 // ─── tipos ────────────────────────────────────────────────────────────────────
 type Camada = {
   id: string
@@ -62,6 +64,8 @@ function TabCamadas() {
   const [editNome, setEditNome] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [editCor, setEditCor] = useState(COR_PADRAO)
+
+  const [vendoParcelasId, setVendoParcelasId] = useState<string | null>(null)
 
   const [uploading, setUploading] = useState(false)
   const [downloading, setDownloading] = useState<string | null>(null)
@@ -250,6 +254,10 @@ function TabCamadas() {
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button
+                  style={{ ...outlineBtn(true), color: '#059669', borderColor: '#6ee7b7' }}
+                  onClick={() => setVendoParcelasId(vendoParcelasId === c.id ? null : c.id)}
+                >{vendoParcelasId === c.id ? 'Ocultar Parcelas' : 'Ver Parcelas'}</button>
+                <button
                   style={outlineBtn(true)}
                   disabled={downloading === `geojson-${c.id}`}
                   onClick={() => downloadGeoJSON(c)}
@@ -275,6 +283,8 @@ function TabCamadas() {
                   }}
                 >Remover</button>
               </div>
+
+              {vendoParcelasId === c.id && <ParcelasViewer camadaId={c.id} />}
             </>
           )}
         </div>
