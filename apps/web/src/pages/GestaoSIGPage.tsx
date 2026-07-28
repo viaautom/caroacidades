@@ -1117,7 +1117,7 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
   )
 }
 
-const PERFIS_COLS: PerfilKey[] = ['ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO']
+const PERFIS_COLS: PerfilKey[] = ['ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO', 'DESENVOLVEDOR']
 
 const PERFIL_COR: Record<PerfilKey, string> = {
   ADMIN:             '#1d4ed8',
@@ -1125,6 +1125,7 @@ const PERFIL_COR: Record<PerfilKey, string> = {
   SETOR_PROJETOS:    '#9333ea',
   FISCAL_CAMPO:      '#ea580c',
   CIDADAO:           '#6b7280',
+  DESENVOLVEDOR:     '#059669',
 }
 
 const PERFIL_ABREV: Record<PerfilKey, string> = {
@@ -1133,6 +1134,7 @@ const PERFIL_ABREV: Record<PerfilKey, string> = {
   SETOR_PROJETOS:    'Projetos',
   FISCAL_CAMPO:      'Campo',
   CIDADAO:           'Cidadão',
+  DESENVOLVEDOR:     'Dev',
 }
 
 function TabelaPermissoes({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
