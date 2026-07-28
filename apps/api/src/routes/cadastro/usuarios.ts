@@ -61,7 +61,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
       }))
     } catch (err: any) {
       console.error('Erro ao listar usuários:', err)
-      return reply.code(500).send({ error: \`Erro banco de dados: \${err?.message}\` })
+      return reply.code(500).send({ error: `Erro banco de dados: ${err?.message}` })
     }
   })
 
