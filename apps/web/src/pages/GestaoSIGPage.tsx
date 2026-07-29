@@ -928,8 +928,8 @@ function TabUsuarios({ onPreview }: { onPreview?: (p: PerfilKey) => void }) {
       await api.patch(`/usuarios/${uid}/perfil`, { perfil: novoPerfil })
       qc.invalidateQueries({ queryKey: ['usuarios'] })
       toast.success('Perfil atualizado. O usuário deve fazer logout e entrar novamente.')
-    } catch {
-      toast.error('Erro ao atualizar perfil')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error ?? 'Erro ao atualizar perfil')
     }
   }
 
