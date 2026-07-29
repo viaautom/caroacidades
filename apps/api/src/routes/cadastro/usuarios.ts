@@ -158,23 +158,24 @@ export async function usuariosRoutes(app: FastifyInstance) {
   app.patch('/usuarios/:uid/perfil', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
     const { uid } = request.params as { uid: string }
     const { perfil } = z.object({ perfil: perfilSchema }).parse(request.body)
+    let dropError = ''
+    let constraintList = []
     try {
-      await query(`
-        DO $$ 
-        DECLARE c_name text;
-        BEGIN
-          SELECT conname INTO c_name
-          FROM pg_constraint
-          WHERE conrelid = 'sigweb.usuarios'::regclass 
-            AND contype = 'c' 
-            AND pg_get_constraintdef(oid) LIKE '%perfil%';
-
-          IF c_name IS NOT NULL THEN
-            EXECUTE 'ALTER TABLE sigweb.usuarios DROP CONSTRAINT ' || quote_ident(c_name);
-          END IF;
-        END $$;
+      const constraints = await query(`
+        SELECT conname, pg_get_constraintdef(oid) as def
+        FROM pg_constraint
+        WHERE conrelid = 'sigweb.usuarios'::regclass AND contype = 'c'
       `)
-    } catch (e) {}
+      constraintList = constraints
+      
+      const c_name = constraints.find((c: any) => c.def.includes('perfil'))?.conname
+      if (c_name) {
+        await query(`ALTER TABLE sigweb.usuarios DROP CONSTRAINT "${c_name}"`)
+      }
+    } catch (e: any) {
+      dropError = e?.message
+    }
+
     try {
       await query(
         `UPDATE sigweb.usuarios SET perfil = $2, updated_at = now() WHERE auth_uid = $1`,
@@ -182,7 +183,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
       )
     } catch (err: any) {
       console.error('Erro no PATCH perfil:', err)
-      return reply.code(500).send({ error: `DEBUG UPDATE: ${err?.message}` })
+      return reply.code(400).send({ error: `DEBUG UPDATE: ${err?.message} | DROP ERR: ${dropError} | CONSTRAINTS: ${JSON.stringify(constraintList)}` })
     }
     return { ok: true }
   })
