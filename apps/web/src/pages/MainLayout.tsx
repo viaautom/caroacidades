@@ -33,7 +33,7 @@ const NAV_ITEMS = [
 ]
 
 const PERFIL_LABEL: Record<string, string> = {
-  ADMIN: 'Administrador', FISCAL_TRIBUTARIO: 'Fiscal Tributário',
+  DESENVOLVEDOR: 'Desenvolvedor', ADMIN: 'Administrador', FISCAL_TRIBUTARIO: 'Fiscal Tributário',
   SETOR_PROJETOS: 'Setor de Projetos', FISCAL_CAMPO: 'Fiscal de Campo', CIDADAO: 'Cidadão',
 }
 

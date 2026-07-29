@@ -27,7 +27,7 @@ type Coluna = { nome: string; tipo: 'text' | 'number' | 'date' | 'boolean' }
 type Parcela = { id: string; codigo: string; area_m2: number | null; atributos: Record<string, unknown>; bairro?: string; logradouro?: string }
 type Usuario = { id: string; email: string; nome: string; perfil: string; ativo: boolean }
 
-const ROLES = ['ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO']
+const ROLES = ['DESENVOLVEDOR', 'ADMIN', 'FISCAL_TRIBUTARIO', 'SETOR_PROJETOS', 'FISCAL_CAMPO', 'CIDADAO']
 const COR_PADRAO = '#2563eb'
 
 // ─── helpers de estilo ────────────────────────────────────────────────────────
@@ -879,6 +879,7 @@ function TabTabela() {
 }
 
 const PERFIL_LABEL: Record<string, string> = {
+  DESENVOLVEDOR:     'Desenvolvedor',
   ADMIN:             'Administrador',
   FISCAL_TRIBUTARIO: 'Fiscal Tributário',
   SETOR_PROJETOS:    'Setor de Projetos',
