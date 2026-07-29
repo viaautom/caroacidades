@@ -15,6 +15,16 @@ export const MIGRATION_USUARIOS = `
 export async function usuariosRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authMiddleware)
 
+  // Retornar perfil real do banco (usado pelo MainLayout para desviar do token estático)
+  app.get('/auth/me', async (request, reply) => {
+    const rows = await query<{ perfil: string }>(
+      `SELECT perfil FROM sigweb.usuarios WHERE auth_uid = $1`,
+      [request.user.uid]
+    )
+    if (rows.length === 0) return reply.code(404).send({ error: 'User not found in db' })
+    return { perfil: rows[0].perfil }
+  })
+
   // Listar usuários do banco de dados
   app.get('/usuarios', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
     try {
