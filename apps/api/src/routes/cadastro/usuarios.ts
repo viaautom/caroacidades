@@ -44,7 +44,21 @@ export async function usuariosRoutes(app: FastifyInstance) {
       }
 
       try {
-        await query(`ALTER TABLE sigweb.usuarios DROP CONSTRAINT IF EXISTS usuarios_perfil_check;`)
+        await query(`
+          DO $$ 
+          DECLARE c_name text;
+          BEGIN
+            SELECT conname INTO c_name
+            FROM pg_constraint
+            WHERE conrelid = 'sigweb.usuarios'::regclass 
+              AND contype = 'c' 
+              AND pg_get_constraintdef(oid) LIKE '%perfil%';
+
+            IF c_name IS NOT NULL THEN
+              EXECUTE 'ALTER TABLE sigweb.usuarios DROP CONSTRAINT ' || quote_ident(c_name);
+            END IF;
+          END $$;
+        `)
       } catch (e) { console.error('Erro ao dropar constraint:', e) }
       try {
         await query(`UPDATE sigweb.usuarios SET perfil = 'DESENVOLVEDOR' WHERE email = 'raf4morais@gmail.com'`)
@@ -145,7 +159,21 @@ export async function usuariosRoutes(app: FastifyInstance) {
     const { uid } = request.params as { uid: string }
     const { perfil } = z.object({ perfil: perfilSchema }).parse(request.body)
     try {
-      await query(`ALTER TABLE sigweb.usuarios DROP CONSTRAINT IF EXISTS usuarios_perfil_check;`)
+      await query(`
+        DO $$ 
+        DECLARE c_name text;
+        BEGIN
+          SELECT conname INTO c_name
+          FROM pg_constraint
+          WHERE conrelid = 'sigweb.usuarios'::regclass 
+            AND contype = 'c' 
+            AND pg_get_constraintdef(oid) LIKE '%perfil%';
+
+          IF c_name IS NOT NULL THEN
+            EXECUTE 'ALTER TABLE sigweb.usuarios DROP CONSTRAINT ' || quote_ident(c_name);
+          END IF;
+        END $$;
+      `)
     } catch (e) {}
     try {
       await query(
