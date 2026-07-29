@@ -155,7 +155,7 @@ export async function usuariosRoutes(app: FastifyInstance) {
 
   // Alterar perfil (fonte da verdade fica em sigweb.usuarios.perfil — o Custom
   // Access Token Hook injeta o valor atual no token a cada login/refresh)
-  app.patch('/usuarios/:uid/perfil', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request) => {
+  app.patch('/usuarios/:uid/perfil', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
     const { uid } = request.params as { uid: string }
     const { perfil } = z.object({ perfil: perfilSchema }).parse(request.body)
     try {
