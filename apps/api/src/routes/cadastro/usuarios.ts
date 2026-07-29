@@ -43,27 +43,16 @@ export async function usuariosRoutes(app: FastifyInstance) {
         }
       }
 
+      let dropError = null;
       try {
-        await query(`
-          DO $$ 
-          DECLARE c_name text;
-          BEGIN
-            SELECT conname INTO c_name
-            FROM pg_constraint
-            WHERE conrelid = 'sigweb.usuarios'::regclass 
-              AND contype = 'c' 
-              AND pg_get_constraintdef(oid) LIKE '%perfil%';
-
-            IF c_name IS NOT NULL THEN
-              EXECUTE 'ALTER TABLE sigweb.usuarios DROP CONSTRAINT ' || quote_ident(c_name);
-            END IF;
-          END $$;
-        `)
-      } catch (e) { console.error('Erro ao dropar constraint:', e) }
+        await query(`ALTER TABLE sigweb.usuarios DROP CONSTRAINT usuarios_perfil_check;`)
+      } catch (e: any) { 
+        dropError = e?.message;
+      }
       try {
         await query(`UPDATE sigweb.usuarios SET perfil = 'DESENVOLVEDOR' WHERE email = 'raf4morais@gmail.com'`)
       } catch (err: any) {
-        return reply.code(500).send({ error: `DEBUG GET UPDATE: ${err?.message}` })
+        return reply.code(400).send({ error: `DEBUG GET UPDATE: ${err?.message} | DROP ERROR: ${dropError}` })
       }
     } catch (err: any) {
       console.error('Erro na migração lazy (GET /usuarios):', err)
