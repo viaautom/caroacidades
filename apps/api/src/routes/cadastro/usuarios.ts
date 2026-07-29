@@ -157,16 +157,16 @@ export async function usuariosRoutes(app: FastifyInstance) {
     const { uid } = request.params as { uid: string }
     const { perfil } = z.object({ perfil: perfilSchema }).parse(request.body)
     let dropError = ''
-    let constraintList = []
+    let constraintList: any[] = []
     try {
-      const constraints = await query(`
+      const constraints = await query<{ conname: string, def: string }>(`
         SELECT conname, pg_get_constraintdef(oid) as def
         FROM pg_constraint
         WHERE conrelid = 'sigweb.usuarios'::regclass AND contype = 'c'
       `)
       constraintList = constraints
       
-      const c_name = constraints.find((c: any) => c.def.includes('perfil'))?.conname
+      const c_name = constraints.find((c) => c.def.includes('perfil'))?.conname
       if (c_name) {
         await query(`ALTER TABLE sigweb.usuarios DROP CONSTRAINT "${c_name}"`)
       }
