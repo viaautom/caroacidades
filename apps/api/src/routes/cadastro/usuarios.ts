@@ -29,36 +29,6 @@ export async function usuariosRoutes(app: FastifyInstance) {
   app.get('/usuarios', { preHandler: requireRole('ADMIN', 'DESENVOLVEDOR') }, async (request, reply) => {
     try {
 
-      // Sync usuários do Supabase Auth para sigweb.usuarios caso a tabela esteja vazia (ex: pós-migração Firebase)
-      const countRes = await query<{ count: string }>(`SELECT COUNT(*) FROM sigweb.usuarios`)
-      if (countRes[0] && parseInt(countRes[0].count) <= 1) {
-        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers()
-        for (const u of users) {
-          const perfil = u.app_metadata?.perfil || u.user_metadata?.perfil || 'CIDADAO'
-          await query(`
-            INSERT INTO sigweb.usuarios (auth_uid, email, nome, perfil, ativo)
-            VALUES ($1, $2, $3, $4, true)
-            ON CONFLICT (auth_uid) DO NOTHING
-          `, [u.id, u.email, u.user_metadata?.nome || u.email?.split('@')[0] || 'Usuário', perfil])
-        }
-      }
-
-      let dropError = null;
-      try {
-        await query(`ALTER TABLE sigweb.usuarios DROP CONSTRAINT usuarios_perfil_check;`)
-      } catch (e: any) { 
-        dropError = e?.message;
-      }
-      try {
-        await query(`UPDATE sigweb.usuarios SET perfil = 'DESENVOLVEDOR' WHERE email = 'raf4morais@gmail.com'`)
-      } catch (err: any) {
-        return reply.code(400).send({ error: `DEBUG GET UPDATE: ${err?.message} | DROP ERROR: ${dropError}` })
-      }
-    } catch (err: any) {
-      console.error('Erro na migração lazy (GET /usuarios):', err)
-    }
-
-    try {
       const rows = await query<{
         auth_uid: string
         email: string | null
@@ -71,16 +41,6 @@ export async function usuariosRoutes(app: FastifyInstance) {
          ORDER BY nome`
       )
       
-      if (rows.length === 0) {
-        let authCount = -1;
-        try {
-          const { data } = await supabaseAdmin.auth.admin.listUsers();
-          authCount = data?.users?.length || 0;
-        } catch (e: any) {
-          return reply.code(500).send({ error: `DEBUG: Erro no Sync Supabase Auth! ${e?.message}` })
-        }
-        return reply.code(500).send({ error: `DEBUG: A tabela sigweb.usuarios está VAZIA. Sync falhou silenciosamente? Supabase Auth tem ${authCount} usuários.` })
-      }
 
       return rows.map(u => ({
         id: u.auth_uid,
