@@ -16,8 +16,11 @@ function useCamadasAtivas(): CamadaMeta[] {
   return camadas.filter(c => activeLayers.includes(`camada:${c.id}`))
 }
 
+import { useStyleStore } from '../../store/style.store'
+
 function CamadaLayer({ camada }: { camada: CamadaMeta }) {
   const { map } = useMapStore()
+  const layerPrefs = useStyleStore(s => s.layerPrefs)
   const layerRef = useRef<L.GeoJSON | null>(null)
 
   const { data } = useQuery({
@@ -26,6 +29,11 @@ function CamadaLayer({ camada }: { camada: CamadaMeta }) {
     staleTime: 60_000,
     enabled: !!map,
   })
+
+  // Dependência no estilo preferido
+  const pref = layerPrefs[`camada:${camada.id}`]
+  const color = pref?.color ?? camada.cor
+  const opacity = pref?.fillOpacity ?? 0.25
 
   useEffect(() => {
     if (!map) return
@@ -44,10 +52,10 @@ function CamadaLayer({ camada }: { camada: CamadaMeta }) {
 
     layerRef.current = L.geoJSON({ type: 'FeatureCollection', features } as any, {
       style: {
-        color: camada.cor,
+        color: color,
         weight: 2,
-        fillColor: camada.cor,
-        fillOpacity: 0.25,
+        fillColor: color,
+        fillOpacity: opacity,
       },
       onEachFeature(feature, layer) {
         layer.bindTooltip(
@@ -58,9 +66,12 @@ function CamadaLayer({ camada }: { camada: CamadaMeta }) {
     }).addTo(map)
 
     return () => {
-      if (layerRef.current && map) { map.removeLayer(layerRef.current); layerRef.current = null }
+      if (layerRef.current && map) {
+        map.removeLayer(layerRef.current)
+        layerRef.current = null
+      }
     }
-  }, [map, data, camada.cor])
+  }, [map, data, camada.cor, color, opacity]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }

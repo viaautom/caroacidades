@@ -3,6 +3,7 @@ import L from 'leaflet'
 import 'leaflet.vectorgrid'
 import { useQuery } from '@tanstack/react-query'
 import { useMapStore } from '../../store/map.store'
+import { useStyleStore } from '../../store/style.store'
 import api from '../../lib/api'
 
 const PG_TILESERV = import.meta.env.VITE_PG_TILESERV_URL ?? '/tiles'
@@ -120,6 +121,10 @@ export function MVTLayer() {
     if (!map) return
 
     // mvtRefreshKey força re-criação do layer após salvar nova parcela (cache-buster na URL)
+    const pref = useStyleStore.getState().layerPrefs['parcelas']
+    const baseColor = pref?.color ?? '#2563eb'
+    const baseFillOpacity = pref?.fillOpacity ?? 0.15
+
     const parcelasLayer = (L as any).vectorGrid?.protobuf(
       `${PG_TILESERV}/sigweb.parcelas/{z}/{x}/{y}.pbf?v=${mvtRefreshKey}`,
       {
@@ -127,7 +132,13 @@ export function MVTLayer() {
           'sigweb.parcelas': (props: any) => {
             const id = String(props.id)
             if (id === selectedParcelaId || multiSelectedParcelas.some(p => p.id === id)) return PARCELA_SELECTED
-            return PARCELA_STYLE
+            return {
+              weight: 1.5,
+              color: baseColor,
+              fill: true,
+              fillColor: baseColor, // Usando a mesma cor para o fill mas a opacidade resolve
+              fillOpacity: baseFillOpacity,
+            }
           }
         },
         interactive: true,
@@ -157,11 +168,15 @@ export function MVTLayer() {
     return () => {
       if (parcelasLayer) map.removeLayer(parcelasLayer)
     }
-  }, [map, activeLayers, selectedParcelaId, multiSelectedParcelas, mvtRefreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, activeLayers, selectedParcelaId, multiSelectedParcelas, mvtRefreshKey, useStyleStore.getState().layerPrefs['parcelas']]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Camada de edificações (quando ativa) — coloridas por situação (req 20/21/26)
   useEffect(() => {
     if (!map || !activeLayers.includes('edificacoes')) return
+
+    const pref = useStyleStore.getState().layerPrefs['edificacoes']
+    const baseColor = pref?.color
+    const baseOpacity = pref?.fillOpacity
 
     const edificacoesLayer = (L as any).vectorGrid?.protobuf(
       `${PG_TILESERV}/sigweb.edificacoes/{z}/{x}/{y}.pbf`,
@@ -169,10 +184,10 @@ export function MVTLayer() {
         vectorTileLayerStyles: {
           'sigweb.edificacoes': (props: any) => ({
             weight: props.situacao === 'irregular' ? 2.5 : 1.5,
-            color: EDIFICACAO_BORDER[props.situacao] ?? EDIFICACAO_BORDER.regular,
+            color: baseColor ?? (EDIFICACAO_BORDER[props.situacao] ?? EDIFICACAO_BORDER.regular),
             fill: true,
-            fillColor: EDIFICACAO_FILL[props.situacao] ?? EDIFICACAO_FILL.regular,
-            fillOpacity: props.situacao === 'irregular' ? 0.65 : 0.45,
+            fillColor: baseColor ?? (EDIFICACAO_FILL[props.situacao] ?? EDIFICACAO_FILL.regular),
+            fillOpacity: baseOpacity ?? (props.situacao === 'irregular' ? 0.65 : 0.45),
           }),
         },
         interactive: false,
@@ -180,8 +195,10 @@ export function MVTLayer() {
     )
 
     if (edificacoesLayer) edificacoesLayer.addTo(map)
-    return () => { if (edificacoesLayer) map.removeLayer(edificacoesLayer) }
-  }, [map, activeLayers]) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      if (edificacoesLayer) map.removeLayer(edificacoesLayer)
+    }
+  }, [map, activeLayers, useStyleStore.getState().layerPrefs['edificacoes']])
 
   // Camada de postes (quando ativa) — click → selectPoste (req 59, 64, 69)
   // postesRefreshKey garante que tiles são recarregados após criar/atualizar OS (req 61, 66)
