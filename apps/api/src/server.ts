@@ -64,17 +64,6 @@ async function bootstrap() {
   await app.register(multipart, {
     limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
   })
-
-  app.get('/api/dev-force-drop', async (request, reply) => {
-    const { query: dbQuery } = await import('./db/pool')
-    try {
-      await dbQuery(`ALTER TABLE sigweb.usuarios DROP CONSTRAINT IF EXISTS usuarios_perfil_check;`)
-      return { ok: true, msg: 'Constraint dropped successfully' }
-    } catch (e: any) {
-      return reply.code(400).send({ error: e.message })
-    }
-  })
-
   // Health check (sem auth — usado pelo Cloud Run e Cloud Monitoring)
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
