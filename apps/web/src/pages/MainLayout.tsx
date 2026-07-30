@@ -219,7 +219,7 @@ export function MainLayout() {
         }}>
           <img src="/logo.png" alt="Caroá"
             style={{ width: 130, height: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
-          {perfil === 'ADMIN' && (
+          {(perfil === 'ADMIN' || perfil === 'DESENVOLVEDOR') && (
             <button onClick={() => setPainelAberto(true)} title="Gestão do SIG"
               style={{
                 background: 'rgba(255,255,255,0.1)', border: 'none',
