@@ -11,8 +11,11 @@ export const MIGRATION_CAMADAS = `
     descricao  TEXT,
     cor        TEXT        NOT NULL DEFAULT '#2563eb',
     colunas    JSONB       NOT NULL DEFAULT '[]',
+    deleted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+  ALTER TABLE sigweb.camadas_vetoriais ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  
   ALTER TABLE sigweb.parcelas
     ADD COLUMN IF NOT EXISTS camada_id  UUID  REFERENCES sigweb.camadas_vetoriais(id),
     ADD COLUMN IF NOT EXISTS atributos  JSONB NOT NULL DEFAULT '{}';
@@ -53,12 +56,16 @@ export async function camadasRoutes(app: FastifyInstance) {
 
   // Listar camadas com contagem de feições e bounding box
   app.get('/camadas', async () => {
+    // Delete any stand-by layers older than 30 days automatically
+    await query(`DELETE FROM sigweb.camadas_vetoriais WHERE deleted_at < NOW() - INTERVAL '30 days'`)
+
     return query(`
       SELECT cv.id, cv.nome, cv.descricao, cv.cor, cv.colunas, cv.created_at,
              COUNT(p.id)::int AS total_parcelas,
              ST_Extent(ST_Transform(p.geometry, 4674))::text AS bounds
       FROM sigweb.camadas_vetoriais cv
       LEFT JOIN sigweb.parcelas p ON p.camada_id = cv.id
+      WHERE cv.deleted_at IS NULL
       GROUP BY cv.id
       ORDER BY cv.nome
     `)
@@ -110,6 +117,12 @@ export async function camadasRoutes(app: FastifyInstance) {
     await query(`UPDATE sigweb.parcelas SET camada_id = NULL WHERE camada_id = $1`, [id])
     await query(`DELETE FROM sigweb.camadas_vetoriais WHERE id = $1`, [id])
     reply.code(204)
+  })
+
+  // Limpar Banco de Dados Cartográfico (Soft delete de todas as camadas vetoriais auxiliares)
+  app.post('/camadas/limpar-cartografico', { preHandler: requireRole('DESENVOLVEDOR') }, async (request, reply) => {
+    await query(`UPDATE sigweb.camadas_vetoriais SET deleted_at = NOW() WHERE deleted_at IS NULL`)
+    return { success: true }
   })
 
   // Listar parcelas de uma camada

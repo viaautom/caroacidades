@@ -41,6 +41,7 @@ type MapState = {
   selectArvore: (id: string | null) => void
   selectPatrimonio: (id: string | null) => void
   toggleLayer: (layerId: string) => void
+  clearLayers: () => void
   setLayerPanelOpen: (open: boolean) => void
   flyTo: (lat: number, lng: number, zoom?: number) => void
   flyToFeature: (lat: number, lng: number, layerId?: string, zoom?: number) => void
@@ -95,6 +96,7 @@ export const useMapStore = create<MapState>((set, get) => ({
         ? state.activeLayers.filter((l) => l !== layerId)
         : [...state.activeLayers, layerId],
     })),
+  clearLayers: () => set({ activeLayers: [] }),
   setLayerPanelOpen: (open) => set({ layerPanelOpen: open }),
   flyTo: (lat, lng, zoom = 18) => {
     get().map?.flyTo([lat, lng], zoom, { animate: true, duration: 0.8 })

@@ -2063,6 +2063,32 @@ function TabDesenvolvedor({ onLock }: { onLock: () => void }) {
         </div>
       </div>
 
+      {/* Gestão Cartográfica */}
+      <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <h3 style={{ margin: '0 0 6px 0', fontSize: 16, color: '#1e3a5f', fontWeight: 600 }}>Gestão Cartográfica</h3>
+          <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
+            Limpa todas as camadas vetoriais auxiliares importadas (Shapefiles/KML). 
+            Elas entram em stand-by e são excluídas definitivamente do banco após 30 dias.
+          </p>
+        </div>
+        <button
+          onClick={async () => {
+            if (confirm('Tem certeza que deseja colocar todas as camadas auxiliares em stand-by?')) {
+              try {
+                await api.post('/camadas/limpar-cartografico')
+                toast.success('Camadas cartográficas enviadas para stand-by')
+              } catch {
+                toast.error('Erro ao limpar camadas cartográficas')
+              }
+            }
+          }}
+          style={{ ...btn('#f59e0b'), alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}
+        >
+          🧹 Limpar Banco Cartográfico
+        </button>
+      </div>
+
       {/* Zona de Perigo */}
       {import.meta.env.DEV && (
         <div style={{ ...card, border: '1px solid #fecaca', display: 'flex', flexDirection: 'column', gap: 12 }}>

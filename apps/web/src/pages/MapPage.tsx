@@ -366,6 +366,25 @@ export function MapPage() {
           <input
             value={searchQuery}
             onChange={e => handleSearch(e.target.value)}
+            onKeyDown={async (e) => {
+              if (e.key === 'Enter' && searchQuery.trim()) {
+                try {
+                  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`)
+                  const data = await res.json()
+                  if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat)
+                    const lon = parseFloat(data[0].lon)
+                    useMapStore.getState().flyTo(lat, lon, 14)
+                    setSearchQuery('')
+                    setSearchResults([])
+                  } else {
+                    toast.error('Local não encontrado no mapa global')
+                  }
+                } catch (err) {
+                  toast.error('Erro ao buscar localização')
+                }
+              }
+            }}
             placeholder="Buscar bairro, logradouro, parcela..."
             style={{
               width: '100%', padding: '7px 12px', border: '1px solid #d1d5db',

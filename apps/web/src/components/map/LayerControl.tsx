@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMapStore } from '../../store/map.store'
+import { useAuthStore } from '../../store/auth.store'
+import { useStyleStore } from '../../store/style.store'
 import api from '../../lib/api'
 import { ICONE_PATRIMONIO } from '../../lib/patrimonio'
 import toast from 'react-hot-toast'
@@ -28,6 +30,8 @@ export function LayerControl() {
     activeLayers, toggleLayer, bairros, zoomToBairro,
     layerPanelOpen: open, setLayerPanelOpen: setOpen,
   } = useMapStore()
+  const { perfil } = useAuthStore()
+  const { layerPrefs, setLayerPref } = useStyleStore()
   const qc = useQueryClient()
   const [bairrosExpanded, setBairrosExpanded] = useState(false)
   const [bairroSearch, setBairroSearch] = useState('')
@@ -83,6 +87,18 @@ export function LayerControl() {
       toast.success(`Camada "${nome}" excluída`)
     } catch {
       toast.error('Erro ao excluir camada')
+    }
+  }
+
+  async function renameCamada(id: string, oldNome: string) {
+    const newNome = prompt(`Renomear camada "${oldNome}" para:`, oldNome)
+    if (!newNome || newNome.trim() === '' || newNome === oldNome) return
+    try {
+      await api.put(`/camadas/${id}`, { nome: newNome.trim() })
+      await qc.invalidateQueries({ queryKey: ['camadas'] })
+      toast.success('Camada renomeada')
+    } catch {
+      toast.error('Erro ao renomear camada')
     }
   }
 
@@ -213,6 +229,21 @@ export function LayerControl() {
                 }}>{totalAtivas}</span>
               )}
             </span>
+            {totalAtivas > 0 && (
+              <button
+                onClick={() => useMapStore.getState().clearLayers()}
+                title="Desativar todas as camadas"
+                style={{
+                  background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer',
+                  fontSize: 10, color: '#fca5a5', padding: '3px 8px', borderRadius: 4, fontWeight: 600,
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+              >
+                Limpar
+              </button>
+            )}
           </div>
 
           {/* Conteúdo scrollável */}
@@ -362,16 +393,23 @@ export function LayerControl() {
               camadas.map(c => {
                 const layerId = `camada:${c.id}`
                 const on = activeLayers.includes(layerId)
+                const pref = layerPrefs[layerId]
+                const color = pref?.color ?? c.cor ?? '#2563eb'
+                const opacity = pref?.fillOpacity ?? 0.5
                 return (
                   <LayerRow
                     key={c.id}
                     label={c.nome}
                     on={on}
                     onToggle={() => toggleLayer(layerId)}
-                    colorDot={c.cor}
+                    colorDot={color}
                     badge={c.total_parcelas > 0 ? String(c.total_parcelas) : undefined}
                     onDownload={() => downloadCamada(c.id, c.nome)}
                     onDelete={() => deleteCamada(c.id, c.nome)}
+                    onRename={perfil === 'DESENVOLVEDOR' || perfil === 'ADMIN' ? () => renameCamada(c.id, c.nome) : undefined}
+                    onColorChange={(newColor) => setLayerPref(layerId, { color: newColor })}
+                    onOpacityChange={(newOpacity) => setLayerPref(layerId, { fillOpacity: newOpacity })}
+                    opacityVal={opacity}
                   />
                 )
               })
@@ -418,7 +456,7 @@ function SectionHeader({ label, action }: { label: string; action?: React.ReactN
 }
 
 function LayerRow({
-  label, on, onToggle, extra, colorDot, badge, onDownload, onDelete,
+  label, on, onToggle, extra, colorDot, badge, onDownload, onDelete, onRename, onColorChange, onOpacityChange, opacityVal = 0.5
 }: {
   label: string
   on: boolean
@@ -428,72 +466,119 @@ function LayerRow({
   badge?: string
   onDownload?: () => void
   onDelete?: () => void
+  onRename?: () => void
+  onColorChange?: (color: string) => void
+  onOpacityChange?: (opacity: number) => void
+  opacityVal?: number
 }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', width: '100%', padding: '8px 12px',
+      display: 'flex', flexDirection: 'column', width: '100%',
       background: on ? '#eff6ff' : 'white',
       borderBottom: '1px solid #f9fafb',
     }}>
-      <button
-        onClick={e => { e.stopPropagation(); onToggle() }}
-        style={{
-          display: 'flex', alignItems: 'center', flex: 1,
-          border: 'none', cursor: 'pointer', fontSize: 13,
-          background: 'transparent', color: on ? '#1d4ed8' : '#374151',
-          padding: 0, textAlign: 'left', gap: 8,
-        }}
-      >
-        <span style={{
-          width: 16, height: 16, borderRadius: 3, flexShrink: 0,
-          border: on ? `2px solid ${colorDot ?? '#2563eb'}` : '2px solid #9ca3af',
-          background: on ? (colorDot ?? '#2563eb') : 'transparent',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontSize: 10,
-        }}>{on ? '✓' : ''}</span>
-
-        {colorDot && (
-          <span style={{
-            width: 10, height: 10, borderRadius: '50%',
-            background: colorDot, flexShrink: 0,
-            border: '1.5px solid rgba(0,0,0,0.15)',
-          }} />
-        )}
-
-        <span style={{ flex: 1 }}>{label}</span>
-
-        {badge && (
-          <span style={{
-            fontSize: 10, background: '#e5e7eb', color: '#6b7280',
-            borderRadius: 8, padding: '1px 5px', fontWeight: 600,
-          }}>{badge}</span>
-        )}
-      </button>
-      {onDownload && (
+      <div style={{
+        display: 'flex', alignItems: 'center', width: '100%', padding: '8px 12px',
+      }}>
         <button
-          onClick={e => { e.stopPropagation(); onDownload() }}
-          title="Exportar como GeoJSON"
+          onClick={e => { e.stopPropagation(); onToggle() }}
           style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 13, color: '#6b7280', padding: '0 2px', lineHeight: 1, flexShrink: 0,
+            display: 'flex', alignItems: 'center', flex: 1,
+            border: 'none', cursor: 'pointer', fontSize: 13,
+            background: 'transparent', color: on ? '#1d4ed8' : '#374151',
+            padding: 0, textAlign: 'left', gap: 8,
           }}
         >
-          ↓
+          <span style={{
+            width: 16, height: 16, borderRadius: 3, flexShrink: 0,
+            border: on ? `2px solid ${colorDot ?? '#2563eb'}` : '2px solid #9ca3af',
+            background: on ? (colorDot ?? '#2563eb') : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white', fontSize: 10,
+          }}>{on ? '✓' : ''}</span>
+
+          {colorDot && onColorChange ? (
+            <input
+              type="color"
+              value={colorDot}
+              onClick={e => e.stopPropagation()}
+              onChange={e => onColorChange(e.target.value)}
+              title="Mudar cor localmente"
+              style={{
+                width: 14, height: 14, padding: 0, border: 'none', borderRadius: '50%',
+                cursor: 'pointer', flexShrink: 0, background: 'transparent'
+              }}
+            />
+          ) : colorDot ? (
+            <span style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: colorDot, flexShrink: 0,
+              border: '1.5px solid rgba(0,0,0,0.15)',
+            }} />
+          ) : null}
+
+          <span style={{ flex: 1 }}>{label}</span>
+
+          {badge && (
+            <span style={{
+              fontSize: 10, background: '#e5e7eb', color: '#6b7280',
+              borderRadius: 8, padding: '1px 5px', fontWeight: 600,
+            }}>{badge}</span>
+          )}
         </button>
+        {onDownload && (
+          <button
+            onClick={e => { e.stopPropagation(); onDownload() }}
+            title="Exportar como GeoJSON"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 13, color: '#6b7280', padding: '0 2px', lineHeight: 1, flexShrink: 0,
+            }}
+          >
+            ↓
+          </button>
+        )}
+        {onRename && (
+          <button
+            onClick={e => { e.stopPropagation(); onRename() }}
+            title="Renomear camada"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 13, color: '#6b7280', padding: '0 2px', lineHeight: 1, flexShrink: 0,
+            }}
+          >
+            ✏️
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            title="Excluir camada"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 13, color: '#ef4444', padding: '0 2px', lineHeight: 1, flexShrink: 0,
+            }}
+          >
+            🗑
+          </button>
+        )}
+        {extra}
+      </div>
+      {onOpacityChange && on && (
+        <div style={{ padding: '0 12px 8px 36px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, color: '#9ca3af' }}>Opacidade</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={opacityVal}
+            onChange={e => onOpacityChange(parseFloat(e.target.value))}
+            style={{ flex: 1, height: 4, cursor: 'pointer' }}
+          />
+        </div>
       )}
-      {onDelete && (
-        <button
-          onClick={e => { e.stopPropagation(); onDelete() }}
-          title="Excluir camada"
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 13, color: '#ef4444', padding: '0 2px', lineHeight: 1, flexShrink: 0,
-          }}
-        >
-          🗑
-        </button>
-      )}
-      {extra}
     </div>
   )
 }
+
