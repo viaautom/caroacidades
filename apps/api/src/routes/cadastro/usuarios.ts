@@ -10,6 +10,8 @@ const perfilSchema = z.enum(PERFIS)
 
 export const MIGRATION_USUARIOS = `
   ALTER TABLE sigweb.usuarios ADD COLUMN IF NOT EXISTS cpf TEXT;
+`
+
 export async function usuariosRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authMiddleware)
 
