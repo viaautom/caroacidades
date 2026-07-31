@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import { useQuery } from '@tanstack/react-query'
 import { useMapStore } from '../../store/map.store'
+import { useStyleStore } from '../../store/style.store'
 import api from '../../lib/api'
 
 type CamadaMeta = { id: string; nome: string; cor: string }
@@ -15,8 +16,6 @@ function useCamadasAtivas(): CamadaMeta[] {
   })
   return camadas.filter(c => activeLayers.includes(`camada:${c.id}`))
 }
-
-import { useStyleStore } from '../../store/style.store'
 
 function CamadaLayer({ camada }: { camada: CamadaMeta }) {
   const { map } = useMapStore()
