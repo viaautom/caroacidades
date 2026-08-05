@@ -18,7 +18,7 @@ import { MIGRATION_PROCESSOS_FIX, MIGRATION_FORMULARIOS_PROCESSO } from './route
 import { viabilidadeRoutes } from './routes/viabilidade/index'
 import { iluminacaoRoutes, MIGRATION_ITENS_POSTE } from './routes/iluminacao/index'
 import { arborizacaoRoutes, MIGRATION_ARVORES_SITUACAO } from './routes/arborizacao/index'
-import { pgvRoutes, MIGRATION_PGV_DEMO } from './routes/pgv/index'
+import { pgvRoutes } from './routes/pgv/index'
 import { processosRoutes } from './routes/processos/index'
 import { reurbRoutes, MIGRATION_REURB_BPMN } from './routes/reurb/index'
 import { socialRoutes, MIGRATION_SOCIAL_V2 } from './routes/social/index'
@@ -275,9 +275,6 @@ async function bootstrap() {
   )
   dbQuery(MIGRATION_SOCIAL_CATALOGOS).catch(err =>
     app.log.warn({ err }, 'Migration social_catalogos skipped')
-  )
-  dbQuery(MIGRATION_PGV_DEMO).catch(err =>
-    console.error('Erro na migração MIGRATION_PGV_DEMO:', err)
   )
   dbQuery(MIGRATION_CONFIGURACOES).catch(err =>
     console.error('Erro na migração MIGRATION_CONFIGURACOES:', err)
