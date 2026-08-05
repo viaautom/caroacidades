@@ -142,16 +142,23 @@ export function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768)
   const [painelAberto, setPainelAberto] = useState(false)
 
-  // Fetch initial map center/zoom on mount
+  // Fetch initial map center/zoom on mount — o mapa só é criado depois que
+  // isso resolve (ver SIGMap.tsx), pra não mostrar a visão padrão e "pular"
+  // pra referência salva alguns segundos depois.
   useEffect(() => {
     api.get('/admin/configuracoes/MAPA_INITIAL_VIEW')
       .then(res => {
         const { center, zoom } = res.data.valor
         if (center && zoom) {
           useMapStore.getState().setInitialView(center, zoom)
+        } else {
+          useMapStore.getState().markInitialViewLoaded()
         }
       })
-      .catch(err => console.error('Erro ao buscar configuração inicial do mapa:', err))
+      .catch(err => {
+        console.error('Erro ao buscar configuração inicial do mapa:', err)
+        useMapStore.getState().markInitialViewLoaded()
+      })
   }, [])
 
   // Carrega permissões customizadas do banco uma vez

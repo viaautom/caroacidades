@@ -31,7 +31,9 @@ type MapState = {
   lastDrawnGeometry: GeoJSON.Geometry | null
   initialCenter: [number, number]
   initialZoom: number
+  initialViewLoaded: boolean
   setInitialView: (center: [number, number], zoom: number) => void
+  markInitialViewLoaded: () => void
   setMap: (map: LeafletMap | null) => void
   setBaseLayer: (baseLayer: BaseLayerId) => void
   selectParcela: (id: string | null) => void
@@ -73,11 +75,13 @@ export const useMapStore = create<MapState>((set, get) => ({
   lastDrawnGeometry: null,
   initialCenter: [-29.0803, -53.8389],
   initialZoom: 15,
+  initialViewLoaded: false,
   setInitialView: (center, zoom) => {
-    set({ initialCenter: center, initialZoom: zoom })
+    set({ initialCenter: center, initialZoom: zoom, initialViewLoaded: true })
     const { map } = get()
     if (map) map.setView(center, zoom, { animate: false })
   },
+  markInitialViewLoaded: () => set({ initialViewLoaded: true }),
   setMap: (map) => set({ map }),
   setBaseLayer: (baseLayer) => set({ baseLayer }),
   selectParcela: (id) => set({ selectedParcelaId: id }),

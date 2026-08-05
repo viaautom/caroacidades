@@ -44,11 +44,13 @@ const TILE_CONFIGS: Record<BaseLayerId, { url: string; attribution: string; subd
 export function SIGMap({ compact = false }: { compact?: boolean } = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const baseTileRef  = useRef<L.TileLayer | null>(null)
-  const { setMap, map, baseLayer, pendingTarget, setPendingTarget, flyTo } = useMapStore()
+  const { setMap, map, baseLayer, pendingTarget, setPendingTarget, flyTo, initialViewLoaded } = useMapStore()
 
-  // Inicializa o mapa uma única vez
+  // Inicializa o mapa uma única vez — espera a visão inicial (vinda do banco,
+  // ver MainLayout.tsx) carregar, pra já nascer no lugar certo em vez de
+  // mostrar a visão padrão e pular pra referência depois.
   useEffect(() => {
-    if (!containerRef.current || map) return
+    if (!containerRef.current || map || !initialViewLoaded) return
     const instance = L.map(containerRef.current, {
       center: useMapStore.getState().initialCenter, zoom: useMapStore.getState().initialZoom,
       zoomControl: true, attributionControl: true,
@@ -58,7 +60,7 @@ export function SIGMap({ compact = false }: { compact?: boolean } = {}) {
       instance.remove()
       setMap(null)  // libera o store para o próximo SIGMap inicializar
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialViewLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Executa flyTo pendente assim que o mapa estiver disponível
   useEffect(() => {
