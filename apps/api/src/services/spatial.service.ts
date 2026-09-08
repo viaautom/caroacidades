@@ -1,5 +1,13 @@
 import { query, queryOne } from '../db/pool'
 
+// historico_cartografico.usuario_id referencia sigweb.usuarios(id), mas
+// request.user.uid é o auth_uid (auth.users.id) do Supabase — precisa
+// resolver o id interno antes de gravar, senão viola a FK.
+async function resolveUsuarioId(authUid: string): Promise<string | null> {
+  const usuario = await queryOne<{ id: string }>(`SELECT id FROM sigweb.usuarios WHERE auth_uid = $1`, [authUid])
+  return usuario?.id ?? null
+}
+
 export interface MemorialDescritivo {
   vertices: { n: number; x: number; y: number; azimute: string; distancia: number }[]
   confrontantes: { id: string; codigo?: string; logradouro?: string }[]
@@ -141,7 +149,7 @@ export async function confirmarDesmembrar(
   await query(
     `INSERT INTO sigweb.historico_cartografico (entidade, entidade_id, operacao, usuario_id)
      VALUES ('parcelas', $1, 'desmembramento', $2)`,
-    [parcelaId, usuarioId]
+    [parcelaId, await resolveUsuarioId(usuarioId)]
   )
 
   return { originalId: parcelaId, novaId: novaParcela.id, novoCodigo }
@@ -191,11 +199,12 @@ export async function unificarParcelas(
     ]
   )
 
+  const usuarioInternoId = await resolveUsuarioId(usuarioId)
   for (const id of parcelaIds) {
     await query(
       `INSERT INTO sigweb.historico_cartografico (entidade, entidade_id, operacao, usuario_id)
        VALUES ('parcelas', $1, 'unificacao', $2)`,
-      [id, usuarioId]
+      [id, usuarioInternoId]
     )
   }
   await query(`DELETE FROM sigweb.parcelas WHERE id IN (${placeholders})`, parcelaIds)
