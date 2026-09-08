@@ -347,7 +347,7 @@ export function EditToolbar() {
     try {
       const res = await api.post(`/parcelas/${parcelaId}/desmembrar/preview`, { linhaGeoJSON: linha })
       setDesmembrarPreview(res.data)
-      desenharPartesPreview(res.data.partes)
+      desenharPartesPreview(res.data.partes, parcelaId, linha)
       toast(`Clique na parte do mapa que deve receber o código ${res.data.novoCodigo}`, { icon: '✂️', duration: 6000 })
     } catch (e: any) {
       toast.error(e?.response?.data?.error ?? 'Erro ao calcular o corte')
@@ -357,7 +357,7 @@ export function EditToolbar() {
     }
   }
 
-  function desenharPartesPreview(partes: { geometry: GeoJSON.Polygon; areaM2: number }[]) {
+  function desenharPartesPreview(partes: { geometry: GeoJSON.Polygon; areaM2: number }[], parcelaId: string, linha: GeoJSON.LineString) {
     removeParcelaLayer()
     desmembrarPartesLayerRef.current?.remove()
     const group = L.featureGroup().addTo(map!)
@@ -367,7 +367,7 @@ export function EditToolbar() {
       const layer = L.geoJSON(parte.geometry, {
         style: { color: cores[i], weight: 2.5, fillColor: cores[i], fillOpacity: 0.35 },
       })
-      layer.on('click', () => escolherParteDesmembrada(i as 0 | 1))
+      layer.on('click', () => escolherParteDesmembrada(parcelaId, linha, i as 0 | 1))
       layer.on('mouseover', () => layer.setStyle({ fillOpacity: 0.55 }))
       layer.on('mouseout', () => layer.setStyle({ fillOpacity: 0.35 }))
       group.addLayer(layer)
@@ -376,12 +376,12 @@ export function EditToolbar() {
     if (bounds.isValid()) map!.fitBounds(bounds, { padding: [40, 40] })
   }
 
-  async function escolherParteDesmembrada(index: 0 | 1) {
-    if (!selectedParcelaId || !desmembrarLinha || salvando) return
+  async function escolherParteDesmembrada(parcelaId: string, linha: GeoJSON.LineString, index: 0 | 1) {
+    if (salvando) return
     setSalvando(true)
     try {
-      const res = await api.post(`/parcelas/${selectedParcelaId}/desmembrar/confirmar`, {
-        linhaGeoJSON: desmembrarLinha,
+      const res = await api.post(`/parcelas/${parcelaId}/desmembrar/confirmar`, {
+        linhaGeoJSON: linha,
         parteEscolhidaIndex: index,
       })
       toast.success(`Parcela desmembrada. Novo lote criado: ${res.data.novoCodigo}`)
