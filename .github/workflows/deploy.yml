@@ -1,0 +1,22 @@
+name: Deploy (Dokploy)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar deploy no Dokploy
+        run: |
+          status=$(curl -s -m 600 -o /tmp/response.json -w "%{http_code}" -X POST "${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d '{"ref":"refs/heads/main"}')
+          echo "HTTP status: $status"
+          cat /tmp/response.json
+          if [ "$status" -ge 400 ]; then
+            echo "Deploy falhou"
+            exit 1
+          fi
