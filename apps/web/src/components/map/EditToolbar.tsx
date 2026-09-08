@@ -132,8 +132,11 @@ export function EditToolbar() {
   const [unifyCodigo, setUnifyCodigo] = useState('')
   const [unifyModalOpen, setUnifyModalOpen] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [desmembrarState, setDesmembrarState] = useState<{ geometry: GeoJSON.LineString; layer: L.Layer } | null>(null)
-  const [desmembrarCodigo, setDesmembrarCodigo] = useState('')
+  const [desmembrarLinha, setDesmembrarLinha] = useState<GeoJSON.LineString | null>(null)
+  const [desmembrarPreview, setDesmembrarPreview] = useState<{
+    novoCodigo: string
+    partes: { geometry: GeoJSON.Polygon; areaM2: number }[]
+  } | null>(null)
   const [xyModalOpen, setXyModalOpen] = useState(false)
   const [xyText, setXyText] = useState('')
   const [xyShapeType, setXyShapeType] = useState<'polygon' | 'line'>('polygon')
@@ -145,6 +148,7 @@ export function EditToolbar() {
   const [espelharEixo, setEspelharEixo] = useState<'H' | 'V'>('H')
 
   const parcelaLayerRef = useRef<L.GeoJSON | null>(null)
+  const desmembrarPartesLayerRef = useRef<L.FeatureGroup | null>(null)
   const guidesLayerRef = useRef<L.LayerGroup | null>(null)
   const orthogonalLayerRef = useRef<L.LayerGroup | null>(null)
   const adHocLayerRef = useRef<L.LayerGroup | null>(null)
@@ -240,9 +244,8 @@ export function EditToolbar() {
         const geojson = (e.layer as L.Polyline).toGeoJSON() as GeoJSON.Feature<GeoJSON.LineString>
         if (modo === 'desmembrar' && selectedParcelaId) {
           map.removeLayer(e.layer)
-          setDesmembrarState({ geometry: geojson.geometry, layer: e.layer })
-          setDesmembrarCodigo('')
           ;(map as any).pm.disableDraw()
+          iniciarPreviewDesmembrar(selectedParcelaId, geojson.geometry)
           return
         }
         if (modo === 'guias') {
@@ -307,9 +310,9 @@ export function EditToolbar() {
 
   useEffect(() => {
     if (!map || !canEdit) return
-    if (modo !== 'desmembrar' || !selectedParcelaId || desmembrarState) return
+    if (modo !== 'desmembrar' || !selectedParcelaId || desmembrarLinha) return
     carregarParcelaParaEdicao(selectedParcelaId)
-  }, [map, canEdit, modo, selectedParcelaId, desmembrarState])
+  }, [map, canEdit, modo, selectedParcelaId, desmembrarLinha])
 
   function removeParcelaLayer() {
     if (parcelaLayerRef.current && map) {
@@ -337,55 +340,72 @@ export function EditToolbar() {
     }
   }
 
-  async function executarDesmembramento(parcelaId: string, linha: GeoJSON.LineString, novoCodigo: string) {
-    removeParcelaLayer()
-    if (desmembrarState) {
-      map?.removeLayer(desmembrarState.layer)
-    }
-    setDesmembrarState(null)
-    setDesmembrarCodigo('')
+  // Corta a parcela pela linha desenhada e mostra as duas partes resultantes
+  // no mapa, coloridas, para o usuário clicar em qual delas recebe o novo código.
+  async function iniciarPreviewDesmembrar(parcelaId: string, linha: GeoJSON.LineString) {
+    setDesmembrarLinha(linha)
     try {
-      const res = await api.post(`/parcelas/${parcelaId}/desmembrar`, {
-        linhaGeoJSON: linha,
-        novoCodigo,
-      })
-      toast.success(`Parcela desmembrada. Novo lote criado: ${novoCodigo}`)
-      refreshMVT()
-      selectParcela(null)
-      return res.data
+      const res = await api.post(`/parcelas/${parcelaId}/desmembrar/preview`, { linhaGeoJSON: linha })
+      setDesmembrarPreview(res.data)
+      desenharPartesPreview(res.data.partes)
+      toast(`Clique na parte do mapa que deve receber o código ${res.data.novoCodigo}`, { icon: '✂️', duration: 6000 })
     } catch (e: any) {
-      toast.error(e?.response?.data?.error ?? 'Erro no desmembramento')
-      throw e
+      toast.error(e?.response?.data?.error ?? 'Erro ao calcular o corte')
+      // desmembrarLinha volta a null → o efeito de modo === 'desmembrar' recarrega
+      // a parcela e reabilita o desenho da linha automaticamente
+      setDesmembrarLinha(null)
     }
   }
 
-  async function confirmarDesmembrar() {
-    if (!selectedParcelaId || !desmembrarState) {
-      toast.error('Selecione uma parcela antes de desmembrar')
-      return
-    }
-    if (!desmembrarCodigo.trim()) {
-      toast.error('Informe o código do novo lote')
-      return
-    }
+  function desenharPartesPreview(partes: { geometry: GeoJSON.Polygon; areaM2: number }[]) {
+    removeParcelaLayer()
+    desmembrarPartesLayerRef.current?.remove()
+    const group = L.featureGroup().addTo(map!)
+    desmembrarPartesLayerRef.current = group
+    const cores = ['#2563eb', '#16a34a']
+    partes.forEach((parte, i) => {
+      const layer = L.geoJSON(parte.geometry, {
+        style: { color: cores[i], weight: 2.5, fillColor: cores[i], fillOpacity: 0.35 },
+      })
+      layer.on('click', () => escolherParteDesmembrada(i as 0 | 1))
+      layer.on('mouseover', () => layer.setStyle({ fillOpacity: 0.55 }))
+      layer.on('mouseout', () => layer.setStyle({ fillOpacity: 0.35 }))
+      group.addLayer(layer)
+    })
+    const bounds = group.getBounds()
+    if (bounds.isValid()) map!.fitBounds(bounds, { padding: [40, 40] })
+  }
+
+  async function escolherParteDesmembrada(index: 0 | 1) {
+    if (!selectedParcelaId || !desmembrarLinha || salvando) return
     setSalvando(true)
     try {
-      const resultado = await executarDesmembramento(selectedParcelaId, desmembrarState.geometry, desmembrarCodigo.trim())
-      if (resultado?.novaId) {
-        selectParcela(resultado.novaId)
-      }
+      const res = await api.post(`/parcelas/${selectedParcelaId}/desmembrar/confirmar`, {
+        linhaGeoJSON: desmembrarLinha,
+        parteEscolhidaIndex: index,
+      })
+      toast.success(`Parcela desmembrada. Novo lote criado: ${res.data.novoCodigo}`)
+      limparDesmembrar()
+      refreshMVT()
+      selectParcela(res.data.novaId)
       setModo('idle')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error ?? 'Erro no desmembramento')
     } finally {
       setSalvando(false)
     }
   }
 
+  function limparDesmembrar() {
+    desmembrarPartesLayerRef.current?.remove()
+    desmembrarPartesLayerRef.current = null
+    removeParcelaLayer()
+    setDesmembrarLinha(null)
+    setDesmembrarPreview(null)
+  }
+
   function cancelarDesmembrar() {
-    if (desmembrarState) {
-      map?.removeLayer(desmembrarState.layer)
-      setDesmembrarState(null)
-      setDesmembrarCodigo('')
-    }
+    limparDesmembrar()
     setModo('idle')
   }
 
@@ -977,45 +997,22 @@ export function EditToolbar() {
         </div>
       )}
 
-      {/* Modal — código do novo lote ao desmembrar */}
-      {desmembrarState && (
+      {/* Painel não-bloqueante — escolha de qual parte recebe o novo código.
+          Sem overlay de tela cheia: o usuário precisa continuar clicando no mapa. */}
+      {desmembrarPreview && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000,
+          position: 'fixed', top: 90, left: '50%', transform: 'translateX(-50%)',
+          background: 'white', borderRadius: 10, padding: '12px 18px', zIndex: 2000,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+          display: 'flex', alignItems: 'center', gap: 14, maxWidth: 480,
         }}>
-          <div style={{
-            background: 'white', borderRadius: 12, padding: 28, width: 420,
-            boxShadow: '0 16px 48px rgba(0,0,0,0.25)',
-          }}>
-            <h3 style={{ margin: '0 0 20px', color: '#1e3a5f', fontSize: 18 }}>Desmembrar parcela</h3>
-            <p style={{ margin: '0 0 18px', color: '#374151', fontSize: 13 }}>
-              Informe o código do novo lote que será destacado da parcela original.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Campo label="Parcela original">
-                <input value={selectedParcelaId ?? ''} readOnly style={{ ...inputSt, background: '#f8fafc' }} />
-              </Campo>
-              <Campo label="Código do novo lote *">
-                <input
-                  autoFocus
-                  value={desmembrarCodigo}
-                  onChange={e => setDesmembrarCodigo(e.target.value)}
-                  placeholder="Ex: 01-02-003-A"
-                  style={inputSt}
-                />
-              </Campo>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
-              <button onClick={cancelarDesmembrar} style={btnSec}>Cancelar</button>
-              <button
-                onClick={confirmarDesmembrar}
-                disabled={!desmembrarCodigo || salvando}
-                style={{ ...btnPri, opacity: !desmembrarCodigo || salvando ? 0.6 : 1 }}
-              >
-                {salvando ? 'Salvando...' : '✓ Salvar desmembramento'}
-              </button>
-            </div>
-          </div>
+          <span style={{ fontSize: 13, color: '#374151' }}>
+            Clique na parte <strong style={{ color: '#16a34a' }}>colorida</strong> do mapa que deve receber o código{' '}
+            <strong>{desmembrarPreview.novoCodigo}</strong>. A outra parte mantém o código atual.
+          </span>
+          <button onClick={cancelarDesmembrar} disabled={salvando} style={{ ...btnSec, flexShrink: 0 }}>
+            Cancelar
+          </button>
         </div>
       )}
 

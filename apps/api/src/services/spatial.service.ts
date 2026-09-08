@@ -56,15 +56,13 @@ export async function getMemorialDescritivo(parcelaId: string): Promise<Memorial
   }
 }
 
-export async function desmembrarParcela(
-  parcelaId: string,
-  linhaGeoJSON: object,
-  novoCodigo: string,
-  usuarioId: string
-): Promise<{ originalId: string; novaId?: string; novaIds?: string[] }> {
-  const partes = await query<{ geom: string; contains_centroid: boolean }>(
-    `SELECT part.geom::text AS geom,
-            ST_Contains(part.geom, ST_Centroid(orig.geometry)) AS contains_centroid
+// Roda o ST_Split e devolve as duas partes resultantes (SRID 31982, ainda
+// não persistidas). `geom` é HEXEWKB (via ::text) — para regravar no banco,
+// usar cast direto `::geometry`, nunca ST_GeomFromText (que espera WKT e
+// falha com "parse error - invalid geometry" ao receber HEXEWKB).
+async function splitParcelaEmDuasPartes(parcelaId: string, linhaGeoJSON: object) {
+  const partes = await query<{ geom: string; area_m2: number }>(
+    `SELECT part.geom::text AS geom, ST_Area(part.geom) AS area_m2
      FROM sigweb.parcelas orig
      CROSS JOIN LATERAL (
        SELECT (ST_Dump(ST_Split(orig.geometry, ST_Transform(ST_GeomFromGeoJSON($2), 31982)))).geom
@@ -75,7 +73,43 @@ export async function desmembrarParcela(
     [parcelaId, JSON.stringify(linhaGeoJSON)]
   )
 
-  if (partes.length < 2) throw new Error('A linha deve dividir a parcela em ao menos dois polígonos')
+  if (partes.length < 2) throw new Error('A linha não atravessa a parcela — desenhe uma linha que corte o polígono de um lado a outro')
+  if (partes.length > 2) throw new Error('O corte gerou mais de duas partes — desenhe uma linha reta que atravesse a parcela uma única vez')
+
+  return partes
+}
+
+export async function previewDesmembrar(parcelaId: string, linhaGeoJSON: object) {
+  const partes = await splitParcelaEmDuasPartes(parcelaId, linhaGeoJSON)
+
+  const original = await queryOne<{ codigo: string }>(`SELECT codigo FROM sigweb.parcelas WHERE id = $1`, [parcelaId])
+  if (!original) throw new Error('Parcela não encontrada')
+
+  const geojson = await query<{ geometry: object; area_m2: number }>(
+    `SELECT ST_AsGeoJSON(ST_Transform($1::geometry, 4326))::json AS geometry, ST_Area($1::geometry) AS area_m2`,
+    [partes[0].geom]
+  )
+  const geojson2 = await query<{ geometry: object; area_m2: number }>(
+    `SELECT ST_AsGeoJSON(ST_Transform($1::geometry, 4326))::json AS geometry, ST_Area($1::geometry) AS area_m2`,
+    [partes[1].geom]
+  )
+
+  return {
+    novoCodigo: `${original.codigo}/2`,
+    partes: [
+      { geometry: geojson[0].geometry, areaM2: geojson[0].area_m2 },
+      { geometry: geojson2[0].geometry, areaM2: geojson2[0].area_m2 },
+    ],
+  }
+}
+
+export async function confirmarDesmembrar(
+  parcelaId: string,
+  linhaGeoJSON: object,
+  parteEscolhidaIndex: 0 | 1,
+  usuarioId: string
+): Promise<{ originalId: string; novaId: string; novoCodigo: string }> {
+  const partes = await splitParcelaEmDuasPartes(parcelaId, linhaGeoJSON)
 
   const original = await queryOne<{ codigo: string; bairro_id: string; logradouro_id: string; loteamento_id: string; quadra_id: string }>(
     `SELECT codigo, bairro_id, logradouro_id, loteamento_id, quadra_id
@@ -84,38 +118,25 @@ export async function desmembrarParcela(
   )
   if (!original) throw new Error('Parcela não encontrada')
 
-  const originalParte = partes.find((p) => p.contains_centroid) ?? partes[0]
-  const novasPartes = partes.filter((p) => p !== originalParte)
-  if (novasPartes.length === 0) throw new Error('Não foi possível gerar novos polígonos a partir do corte')
+  const novoCodigo = `${original.codigo}/2`
+  const parteNova = partes[parteEscolhidaIndex]
+  const parteOriginal = partes[parteEscolhidaIndex === 0 ? 1 : 0]
 
   await query(
     `UPDATE sigweb.parcelas
-     SET geometry = ST_SetSRID(ST_GeomFromText($2), 31982),
-         area_m2 = ST_Area(ST_SetSRID(ST_GeomFromText($2), 31982))
+     SET geometry = $2::geometry,
+         area_m2 = ST_Area($2::geometry)
      WHERE id = $1`,
-    [parcelaId, originalParte.geom]
+    [parcelaId, parteOriginal.geom]
   )
 
-  const novaIds: string[] = []
-  for (let i = 0; i < novasPartes.length; i += 1) {
-    const codigo = i === 0 ? novoCodigo : `${novoCodigo}-${String(i + 1).padStart(2, '0')}`
-    const [row] = await query<{ id: string }>(
-      `INSERT INTO sigweb.parcelas
-         (codigo, bairro_id, logradouro_id, loteamento_id, quadra_id, geometry, area_m2)
-       VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_GeomFromText($6), 31982),
-               ST_Area(ST_SetSRID(ST_GeomFromText($6), 31982)))
-       RETURNING id`,
-      [
-        codigo,
-        original.bairro_id,
-        original.logradouro_id,
-        original.loteamento_id,
-        original.quadra_id,
-        novasPartes[i].geom,
-      ]
-    )
-    novaIds.push(row.id)
-  }
+  const [novaParcela] = await query<{ id: string }>(
+    `INSERT INTO sigweb.parcelas
+       (codigo, bairro_id, logradouro_id, loteamento_id, quadra_id, geometry, area_m2)
+     VALUES ($1, $2, $3, $4, $5, $6::geometry, ST_Area($6::geometry))
+     RETURNING id`,
+    [novoCodigo, original.bairro_id, original.logradouro_id, original.loteamento_id, original.quadra_id, parteNova.geom]
+  )
 
   await query(
     `INSERT INTO sigweb.historico_cartografico (entidade, entidade_id, operacao, usuario_id)
@@ -123,7 +144,7 @@ export async function desmembrarParcela(
     [parcelaId, usuarioId]
   )
 
-  return { originalId: parcelaId, novaId: novaIds[0], novaIds }
+  return { originalId: parcelaId, novaId: novaParcela.id, novoCodigo }
 }
 
 export async function unificarParcelas(

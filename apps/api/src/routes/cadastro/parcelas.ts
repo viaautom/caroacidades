@@ -8,7 +8,8 @@ import { authMiddleware } from '../../middleware/auth.middleware'
 import { requireRole } from '../../middleware/rbac.middleware'
 import {
   getMemorialDescritivo,
-  desmembrarParcela,
+  previewDesmembrar,
+  confirmarDesmembrar,
   unificarParcelas,
   getParcelasNoBbox,
 } from '../../services/spatial.service'
@@ -410,18 +411,39 @@ export async function parcelasRoutes(app: FastifyInstance) {
     )
   })
 
-  // Desmembramento
+  // Desmembramento — passo 1: corta a parcela pela linha e devolve as duas
+  // partes resultantes (em 4326, ainda não persistidas) para o usuário
+  // escolher no mapa qual delas recebe o novo código.
   app.post(
-    '/parcelas/:id/desmembrar',
+    '/parcelas/:id/desmembrar/preview',
     { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO') },
     async (request, reply) => {
       const { id } = request.params as { id: string }
       const body = z.object({
         linhaGeoJSON: z.object({ type: z.literal('LineString'), coordinates: z.array(z.array(z.number())).min(2) }),
-        novoCodigo: z.string().min(1).max(60),
       }).parse(request.body)
       try {
-        const resultado = await desmembrarParcela(id, body.linhaGeoJSON, body.novoCodigo, request.user.uid)
+        return await previewDesmembrar(id, body.linhaGeoJSON)
+      } catch (err: any) {
+        return reply.code(400).send({ error: err.message ?? 'Erro no desmembramento' })
+      }
+    }
+  )
+
+  // Desmembramento — passo 2: persiste, atribuindo o código novo
+  // ("{código original}/2") à parte escolhida pelo usuário; a outra parte
+  // mantém a parcela original (mesmo id/código).
+  app.post(
+    '/parcelas/:id/desmembrar/confirmar',
+    { preHandler: requireRole('ADMIN', 'FISCAL_TRIBUTARIO') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const body = z.object({
+        linhaGeoJSON: z.object({ type: z.literal('LineString'), coordinates: z.array(z.array(z.number())).min(2) }),
+        parteEscolhidaIndex: z.union([z.literal(0), z.literal(1)]),
+      }).parse(request.body)
+      try {
+        const resultado = await confirmarDesmembrar(id, body.linhaGeoJSON, body.parteEscolhidaIndex, request.user.uid)
         reply.code(201)
         return resultado
       } catch (err: any) {
