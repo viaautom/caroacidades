@@ -15,7 +15,7 @@ services:
       - dokploy-network
 
   api:
-    image: sigweb-api-prod:v2
+    image: sigweb-api-prod:v3
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -38,7 +38,7 @@ services:
       - dokploy-network
 
   web:
-    image: sigweb-web-prod:v2
+    image: sigweb-web-prod:v3
     build:
       context: .
       dockerfile: apps/web/Dockerfile
